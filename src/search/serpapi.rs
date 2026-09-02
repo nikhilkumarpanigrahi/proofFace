@@ -90,6 +90,7 @@ impl SearchProvider for SerpApiProvider {
             for item in inline_images {
                 if let Some(link) = item.get("link").or_else(|| item.get("source")).and_then(|v| v.as_str()) {
                     let title = item.get("title").and_then(|v| v.as_str()).map(String::from);
+                    let snippet = title.clone();
                     let media_url = item
                         .get("thumbnail")
                         .or_else(|| item.get("original"))
@@ -99,7 +100,7 @@ impl SearchProvider for SerpApiProvider {
                     results.push(SearchResult {
                         url: link.to_string(),
                         title,
-                        snippet: title.clone(),
+                        snippet,
                         media_url,
                         provider: self.name().into(),
                     });
