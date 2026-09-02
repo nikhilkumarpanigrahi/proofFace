@@ -115,15 +115,18 @@ impl Pipeline {
             .await?;
 
         let match_eval = match best_evaluation {
-            Some(eval) if eval.match_confidence != MatchConfidence::NoMatch => {
+            Some(eval) if eval.match_confidence == MatchConfidence::HighConfidence => {
                 println!(
-                    "\n      ★ MATCH CONFIRMED (similarity: {:.3})\n      Source: {}\n      Media:  {}",
-                    eval.similarity, eval.candidate.source_url, eval.candidate.media_url
+                    "\n      ★ MATCH CONFIRMED (similarity: {:.3} >= {:.2})\n      Source: {}\n      Media:  {}",
+                    eval.similarity, self.config.high_confidence_threshold, eval.candidate.source_url, eval.candidate.media_url
                 );
                 eval
             }
             Some(eval) => {
-                println!("\n      ✗ Highest candidate similarity ({:.3}) below threshold ({:.2})", eval.similarity, self.config.possible_match_threshold);
+                println!(
+                    "\n      ✗ Insufficient biometric match ({:.3}). High confidence threshold ({:.2}) not met.",
+                    eval.similarity, self.config.high_confidence_threshold
+                );
                 return Err(PipelineError::NoMatchFound {
                     best_similarity: eval.similarity,
                 });
