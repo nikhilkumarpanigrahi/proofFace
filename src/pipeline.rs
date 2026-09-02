@@ -83,7 +83,7 @@ impl Pipeline {
         let target_embedding = self.face_engine.embed(target_face).await?;
         println!("✓ L2-normalized 128-dim embedding generated");
 
-        // [4/7] Searching public web
+        // [4/7] Searching public web (Google Lens Visual Search)
         let search_query = if let Some(q) = custom_query {
             q.to_string()
         } else {
@@ -94,7 +94,7 @@ impl Pipeline {
             format!("{} profile photo", query_stem)
         };
 
-        println!("[4/7] Searching public web for candidates (query: \"{}\")...", search_query);
+        println!("[4/7] Searching public web for candidates (Google Lens AI Vision)...");
         let search_req = SearchRequest {
             query: search_query,
             max_results: self.config.max_search_results,
@@ -111,14 +111,44 @@ impl Pipeline {
             self.config.max_concurrent_candidates
         );
 
-        let best_evaluation = self
+        let evaluations = self
             .evaluate_candidates(&search_results, &target_embedding)
             .await?;
+
+        // Print Top Discovered Posts Box (Top 3-4 candidate URLs found)
+        let candidate_matches: Vec<_> = evaluations
+            .iter()
+            .filter(|e| e.similarity >= self.config.possible_match_threshold)
+            .collect();
+
+        if !candidate_matches.is_empty() {
+            println!("\n╔══════════════════════════════════════════════════════════╗");
+            println!("║              TOP DISCOVERED PUBLIC POSTS 🌐              ║");
+            println!("╚══════════════════════════════════════════════════════════╝");
+
+            for (i, eval) in candidate_matches.iter().take(4).enumerate() {
+                let title = eval.candidate.title.as_deref().unwrap_or("Public Social / Web Post");
+                let clean_title = if title.len() > 50 { &title[..47] } else { title };
+                let platform = eval.candidate.snippet.as_deref().unwrap_or("Web Post");
+
+                let badge = if eval.similarity >= self.config.high_confidence_threshold {
+                    "✓ HighConfidence"
+                } else {
+                    "~ PossibleMatch"
+                };
+
+                println!(" {:2}. [{}] {}", i + 1, platform, clean_title);
+                println!("     URL   : {}", eval.candidate.source_url);
+                println!("     Match : {:.1}% ({})\n", eval.similarity * 100.0, badge);
+            }
+        }
+
+        let best_evaluation = evaluations.first().cloned();
 
         let match_eval = match best_evaluation {
             Some(eval) if eval.match_confidence == MatchConfidence::HighConfidence => {
                 println!(
-                    "\n      ★ MATCH CONFIRMED (similarity: {:.3} >= {:.2})\n      Source: {}\n      Media:  {}",
+                    "      ★ PRIMARY MATCH ANCHORED (similarity: {:.3} >= {:.2})\n      Source: {}\n      Media:  {}",
                     eval.similarity, self.config.high_confidence_threshold, eval.candidate.source_url, eval.candidate.media_url
                 );
                 eval
@@ -195,13 +225,13 @@ impl Pipeline {
         }
     }
 
-    /// Evaluates candidate URLs with bounded concurrency and early exit.
+    /// Evaluates candidate URLs with bounded concurrency and returns sorted matches.
     async fn evaluate_candidates(
         &self,
         search_results: &[crate::models::SearchResult],
         target_embedding: &FaceEmbedding,
-    ) -> Result<Option<CandidateEvaluation>> {
-        let best_match: Arc<Mutex<Option<CandidateEvaluation>>> = Arc::new(Mutex::new(None));
+    ) -> Result<Vec<CandidateEvaluation>> {
+        let all_matches: Arc<Mutex<Vec<CandidateEvaluation>>> = Arc::new(Mutex::new(Vec::new()));
         let semaphore = self.bounded_pool.semaphore();
 
         let mut tasks = Vec::new();
@@ -218,7 +248,7 @@ impl Pipeline {
             let detector = FaceDetector::new();
             let target_emb = target_embedding.clone();
             let res_clone = result.clone();
-            let best_match_clone = Arc::clone(&best_match);
+            let all_matches_clone = Arc::clone(&all_matches);
             let high_thresh = self.config.high_confidence_threshold;
             let poss_thresh = self.config.possible_match_threshold;
 
@@ -227,16 +257,6 @@ impl Pipeline {
                     Ok(p) => p,
                     Err(_) => return,
                 };
-
-                // Check if another worker already found a high-confidence match
-                {
-                    let lock = best_match_clone.lock().await;
-                    if let Some(current_best) = lock.as_ref() {
-                        if current_best.match_confidence == MatchConfidence::HighConfidence {
-                            return; // Early termination: stop extra download/inference work
-                        }
-                    }
-                }
 
                 if let Ok(bytes) = fetcher.fetch_bytes(&media_url).await {
                     if let Ok(img) = detector.validate_and_load(&bytes) {
@@ -253,25 +273,18 @@ impl Pipeline {
                                             conf
                                         );
 
-                                        let mut lock = best_match_clone.lock().await;
-                                        let is_better = match lock.as_ref() {
-                                            Some(current) => sim > current.similarity,
-                                            None => true,
-                                        };
-
-                                        if is_better {
-                                            *lock = Some(CandidateEvaluation {
-                                                candidate: Candidate {
-                                                    source_url: res_clone.url,
-                                                    media_url,
-                                                    title: res_clone.title,
-                                                    snippet: res_clone.snippet,
-                                                    raw_image_bytes: bytes,
-                                                },
-                                                similarity: sim,
-                                                match_confidence: conf,
-                                            });
-                                        }
+                                        let mut lock = all_matches_clone.lock().await;
+                                        lock.push(CandidateEvaluation {
+                                            candidate: Candidate {
+                                                source_url: res_clone.url,
+                                                media_url,
+                                                title: res_clone.title,
+                                                snippet: res_clone.snippet,
+                                                raw_image_bytes: bytes,
+                                            },
+                                            similarity: sim,
+                                            match_confidence: conf,
+                                        });
                                     }
                                 }
                             }
@@ -287,8 +300,9 @@ impl Pipeline {
             let _ = task.await;
         }
 
-        let final_match = best_match.lock().await.clone();
-        Ok(final_match)
+        let mut results = all_matches.lock().await.clone();
+        results.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap_or(std::cmp::Ordering::Equal));
+        Ok(results)
     }
 
     /// Runs a simulated tamper demonstration against an existing proof record.
