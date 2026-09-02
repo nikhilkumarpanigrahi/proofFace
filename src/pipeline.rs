@@ -99,6 +99,7 @@ impl Pipeline {
             query: search_query,
             max_results: self.config.max_search_results,
             image_hint: None,
+            image_bytes: Some(image_bytes.clone()),
         };
 
         let search_results = self.search_orchestrator.search_with_resilience(&search_req).await?;

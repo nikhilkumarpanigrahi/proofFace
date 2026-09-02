@@ -46,6 +46,7 @@ pub struct SearchRequest {
     pub query: String,
     pub max_results: usize,
     pub image_hint: Option<String>,
+    pub image_bytes: Option<Vec<u8>>,
 }
 
 /// Individual search result returned by a search provider.
@@ -58,33 +59,8 @@ pub struct SearchResult {
     pub provider: String,
 }
 
-/// Candidate retrieved for face verification.
+/// Discovered public content subject to canonicalization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Candidate {
-    pub source_url: String,
-    pub media_url: String,
-    pub title: Option<String>,
-    pub snippet: Option<String>,
-    pub raw_image_bytes: Vec<u8>,
-}
-
-/// Result of evaluating a candidate against the input embedding.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CandidateEvaluation {
-    pub candidate: Candidate,
-    pub similarity: f32,
-    pub match_confidence: MatchConfidence,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MatchConfidence {
-    HighConfidence,
-    PossibleMatch,
-    NoMatch,
-}
-
-/// Discovered public content packaged for deterministic canonicalization.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiscoveredContent {
     pub source_url: String,
     pub media_url: Option<String>,
@@ -94,10 +70,37 @@ pub struct DiscoveredContent {
     pub retrieved_at: DateTime<Utc>,
 }
 
-/// Blockchain proof anchor record.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ContentProof {
+/// Candidate pair for verification.
+#[derive(Debug, Clone)]
+pub struct Candidate {
+    pub source_url: String,
+    pub media_url: String,
+    pub title: Option<String>,
+    pub snippet: Option<String>,
+    pub raw_image_bytes: Vec<u8>,
+}
+
+/// Similarity level classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MatchConfidence {
+    HighConfidence,
+    PossibleMatch,
+    NoMatch,
+}
+
+/// Result of evaluating a single candidate.
+#[derive(Debug, Clone)]
+pub struct CandidateEvaluation {
+    pub candidate: Candidate,
+    pub similarity: f32,
+    pub match_confidence: MatchConfidence,
+}
+
+/// On-chain proof representation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProofRecord {
     pub fingerprint_hex: String,
+    #[serde(skip)]
     pub fingerprint_bytes: [u8; 32],
     pub source_url: String,
     pub tx_hash: String,
@@ -105,8 +108,10 @@ pub struct ContentProof {
     pub timestamp: u64,
 }
 
-/// Final verification outcome.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub type ContentProof = ProofRecord;
+
+/// Final outcome of verification pipeline.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VerificationOutcome {
     Verified {
         fingerprint: String,
@@ -121,5 +126,6 @@ pub enum VerificationOutcome {
     },
     Unverified {
         reason: String,
+        best_similarity: f32,
     },
 }

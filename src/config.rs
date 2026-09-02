@@ -40,7 +40,7 @@ impl Config {
         let search_timeout_ms = env::var("SEARCH_TIMEOUT_MS")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(8000);
+            .unwrap_or(15000);
 
         let max_search_results = env::var("MAX_SEARCH_RESULTS")
             .ok()
