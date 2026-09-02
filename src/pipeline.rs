@@ -154,17 +154,30 @@ impl Pipeline {
                 eval
             }
             Some(eval) => {
-                println!(
-                    "\n      ✗ Insufficient biometric match ({:.3}). High confidence threshold ({:.2}) not met.",
-                    eval.similarity, self.config.high_confidence_threshold
-                );
-                return Err(PipelineError::NoMatchFound {
+                println!("\n╔══════════════════════════════════════════════════════════╗");
+                println!("║                     UNVERIFIED ✗                         ║");
+                println!("╚══════════════════════════════════════════════════════════╝\n");
+                println!("ℹ Result: No authentic public web source found for this face.");
+                println!("  • Required Biometric Threshold : >= {:.1}%", self.config.high_confidence_threshold * 100.0);
+                println!("  • Highest Candidate Similarity : {:.1}% (Insufficient)", eval.similarity * 100.0);
+                println!("  • Diagnosis:");
+                println!("    1. This appears to be a private or personal photo not published online.");
+                println!("    2. No public social media posts or news articles match this face.");
+                println!("    3. Blockchain proof not anchored (zero false-positives policy).\n");
+
+                return Ok(VerificationOutcome::Unverified {
+                    reason: "No public match met high-confidence threshold".into(),
                     best_similarity: eval.similarity,
                 });
             }
             None => {
-                println!("\n      ✗ No candidate image could be processed");
-                return Err(PipelineError::NoMatchFound {
+                println!("\n╔══════════════════════════════════════════════════════════╗");
+                println!("║                     UNVERIFIED ✗                         ║");
+                println!("╚══════════════════════════════════════════════════════════╝\n");
+                println!("ℹ Result: No candidate web sources discovered for this image.\n");
+
+                return Ok(VerificationOutcome::Unverified {
+                    reason: "No candidate web images found".into(),
                     best_similarity: 0.0,
                 });
             }
