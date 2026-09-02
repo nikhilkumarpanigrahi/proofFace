@@ -30,6 +30,17 @@ pub enum Commands {
         query: Option<String>,
     },
 
+    /// Run batch verification across multiple images or a directory
+    Batch {
+        /// List of image paths or directory containing images
+        #[arg(value_name = "IMAGE_PATHS", required = true)]
+        image_paths: Vec<PathBuf>,
+
+        /// Require 100% of images to be verified (fails if any image is unverified)
+        #[arg(short, long)]
+        strict: bool,
+    },
+
     /// Demonstrate successful verification followed by cryptographic tamper detection
     TamperDemo {
         /// Path to input JPEG or PNG image

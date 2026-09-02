@@ -128,7 +128,11 @@ impl Pipeline {
 
             for (i, eval) in candidate_matches.iter().take(4).enumerate() {
                 let title = eval.candidate.title.as_deref().unwrap_or("Public Social / Web Post");
-                let clean_title = if title.len() > 50 { &title[..47] } else { title };
+                let clean_title: String = if title.chars().count() > 50 {
+                    format!("{}...", title.chars().take(47).collect::<String>())
+                } else {
+                    title.to_string()
+                };
                 let platform = eval.candidate.snippet.as_deref().unwrap_or("Web Post");
 
                 let badge = if eval.similarity >= self.config.high_confidence_threshold {
@@ -369,5 +373,118 @@ impl Pipeline {
         } else {
             Ok(outcome)
         }
+    }
+
+    /// Runs batch verification across multiple images or an entire folder.
+    pub async fn run_batch_verification(
+        &self,
+        image_paths: &[std::path::PathBuf],
+        strict: bool,
+    ) -> Result<Vec<(std::path::PathBuf, VerificationOutcome)>> {
+        println!("\n╔══════════════════════════════════════════════════════════╗");
+        println!("║             PROOFFACE 🦀 BATCH VERIFICATION              ║");
+        println!("║     Multi-Image Creator Discovery & Blockchain Audit     ║");
+        println!("╚══════════════════════════════════════════════════════════╝\n");
+
+        // 1. Expand paths (directories -> images)
+        let mut target_files = Vec::new();
+        for p in image_paths {
+            if p.is_dir() {
+                if let Ok(entries) = fs::read_dir(p) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                            let ext_lower = ext.to_lowercase();
+                            if ext_lower == "jpg" || ext_lower == "jpeg" || ext_lower == "png" || ext_lower == "webp" {
+                                target_files.push(path);
+                            }
+                        }
+                    }
+                }
+            } else if p.is_file() {
+                target_files.push(p.clone());
+            }
+        }
+
+        if target_files.is_empty() {
+            println!("⚠ No valid image files found in provided path(s).\n");
+            return Ok(Vec::new());
+        }
+
+        println!("⚡ Batch Queue: Found {} images to verify.\n", target_files.len());
+
+        let mut results = Vec::new();
+        let mut verified_count = 0;
+        let mut unverified_count = 0;
+
+        for (idx, img_path) in target_files.iter().enumerate() {
+            let filename = img_path.file_name().and_then(|s| s.to_str()).unwrap_or("image");
+            println!("------------------------------------------------------------");
+            println!("[Batch Item {}/{}] Processing: {}", idx + 1, target_files.len(), filename);
+            println!("------------------------------------------------------------");
+
+            match self.run_verification(img_path, None).await {
+                Ok(outcome) => {
+                    match &outcome {
+                        VerificationOutcome::Verified { .. } => verified_count += 1,
+                        VerificationOutcome::Unverified { .. } => unverified_count += 1,
+                        VerificationOutcome::Tampered { .. } => unverified_count += 1,
+                    }
+                    results.push((img_path.clone(), outcome));
+                }
+                Err(e) => {
+                    println!("\n  ✗ Item Failed: {}\n", e);
+                    unverified_count += 1;
+                    results.push((img_path.clone(), VerificationOutcome::Unverified {
+                        reason: e.to_string(),
+                        best_similarity: 0.0,
+                    }));
+                }
+            }
+        }
+
+        // Print Batch Summary Matrix
+        println!("\n╔══════════════════════════════════════════════════════════╗");
+        println!("║                BATCH VERIFICATION SUMMARY                ║");
+        println!("╚══════════════════════════════════════════════════════════╝\n");
+
+        for (i, (path, outcome)) in results.iter().enumerate() {
+            let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("image");
+            match outcome {
+                VerificationOutcome::Verified { similarity, source_url, tx_hash, .. } => {
+                    println!(" {:2}. [✓ VERIFIED] {}", i + 1, name);
+                    println!("     Creator/Source : {}", source_url);
+                    println!("     Match Score    : {:.1}% (HighConfidence)", similarity * 100.0);
+                    println!("     Polygon Tx     : {}\n", tx_hash);
+                }
+                VerificationOutcome::Unverified { reason, best_similarity } => {
+                    println!(" {:2}. [✗ UNVERIFIED] {}", i + 1, name);
+                    println!("     Reason         : {}", reason);
+                    println!("     Highest Score  : {:.1}% (Insufficient)\n", best_similarity * 100.0);
+                }
+                VerificationOutcome::Tampered { stored_fingerprint, source_url, .. } => {
+                    println!(" {:2}. [✗ TAMPERED] {}", i + 1, name);
+                    println!("     Source         : {}", source_url);
+                    println!("     On-Chain Hash  : {}\n", stored_fingerprint);
+                }
+            }
+        }
+
+        println!("------------------------------------------------------------");
+        println!("• Total Images Processed : {}", target_files.len());
+        println!("• Verified Authentic     : {} / {}", verified_count, target_files.len());
+        println!("• Unverified / Private   : {} / {}", unverified_count, target_files.len());
+
+        if strict && unverified_count > 0 {
+            println!("\n⛔ STRICT MODE FAILED: {}/{} image(s) could not be verified.", unverified_count, target_files.len());
+            println!("   Requirement: All images in the batch must be 100% verified.");
+        } else if verified_count == target_files.len() {
+            println!("\n🌟 ALL IMAGES VERIFIED (100% Authentic Public Creators Found!)");
+        } else {
+            println!("\n✓ Batch audit completed with per-image breakdown.");
+        }
+        println!("------------------------------------------------------------\n");
+
+        Ok(results)
     }
 }

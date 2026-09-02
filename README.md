@@ -105,7 +105,22 @@ ProofFace is built as a **modular Rust monolith** designed for maximum resilienc
 ╚══════════════════════════════════════════════════════════╝
 ```
 
-### 2. Tamper Detection Demo (`cargo run -- tamper-demo ./samples/input.jpg`)
+### 2. Batch Multi-Image Verification (`cargo run -- batch <paths...>`)
+
+Verify multiple images or an entire folder of photos with creator identification:
+
+```bash
+# Verify multiple images
+cargo run -- batch ./samples/image1.jpg ./samples/image2.jpg
+
+# Strict mode: fails if any image in the batch is unverified
+cargo run -- batch ./samples/image1.jpg ./samples/image2.jpg --strict
+
+# Verify an entire directory of photos
+cargo run -- batch ~/Downloads/photos/
+```
+
+### 3. Cryptographic Tamper Demo (`cargo run -- tamper-demo ./samples/input.jpg`)
 
 ```text
 --- [SIMULATING UNAUTHORIZED CONTENT MODIFICATION] ---

@@ -35,6 +35,22 @@ async fn main() -> Result<()> {
                 }
             }
         }
+        Commands::Batch { image_paths, strict } => {
+            let pipeline = Pipeline::new(config);
+            match pipeline.run_batch_verification(&image_paths, strict).await {
+                Ok(results) => {
+                    if strict && results.iter().any(|(_, r)| !matches!(r, proofface::models::VerificationOutcome::Verified { .. })) {
+                        std::process::exit(1);
+                    } else {
+                        std::process::exit(0);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("\nBatch verification failed: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         Commands::TamperDemo { image_path, query } => {
             let pipeline = Pipeline::new(config);
             match pipeline.run_tamper_demo(&image_path, query.as_deref()).await {
