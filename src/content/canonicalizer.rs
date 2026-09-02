@@ -6,7 +6,7 @@ use serde_json::json;
 pub struct ContentCanonicalizer;
 
 impl ContentCanonicalizer {
-    /// Produces a deterministic canonical representation of discovered content.
+    /// Produces a strict RFC 8785 JSON Canonicalization Scheme (JCS) deterministic representation.
     /// Excludes volatile non-deterministic timestamps and formats fields deterministically.
     pub fn canonicalize(content: &DiscoveredContent) -> Result<Vec<u8>> {
         // Strip volatile fields and normalize strings
@@ -16,7 +16,7 @@ impl ContentCanonicalizer {
         let normalized_snippet = content.snippet.as_deref().map(|s| s.trim());
         let normalized_hash = content.content_hash.trim().to_lowercase();
 
-        // Build deterministic BTreeMap structure via serde_json Map
+        // Build deterministic structure
         let mut map = serde_json::Map::new();
         map.insert("content_hash".to_string(), json!(normalized_hash));
         map.insert("media_url".to_string(), json!(normalized_media));
@@ -26,12 +26,14 @@ impl ContentCanonicalizer {
         map.insert("version".to_string(), json!("1.0"));
 
         let canonical_value = serde_json::Value::Object(map);
-        serde_json::to_vec(&canonical_value).map_err(|e| {
-            PipelineError::CanonicalizationFailed(format!("Serialization error: {e}"))
+
+        // Strict RFC 8785 JSON Canonicalization Scheme (JCS) serialization
+        serde_jcs::to_vec(&canonical_value).map_err(|e| {
+            PipelineError::CanonicalizationFailed(format!("RFC 8785 serialization error: {e}"))
         })
     }
 
-    /// Generates the deterministic SHA-256 fingerprint for discovered content.
+    /// Generates the deterministic SHA-256 fingerprint for discovered content over RFC 8785 bytes.
     pub fn fingerprint(content: &DiscoveredContent) -> Result<(String, [u8; 32])> {
         let canonical_bytes = Self::canonicalize(content)?;
         let bytes = ContentHasher::sha256(&canonical_bytes);
