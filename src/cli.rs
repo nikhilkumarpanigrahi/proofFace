@@ -6,7 +6,7 @@ use std::path::PathBuf;
     name = "proofface",
     version = "0.1.0",
     about = "ProofFace 🦀 Face -> Web Discovery -> Blockchain Proof Verification Pipeline",
-    long_about = "ProofFace takes a face image, discovers public matching web sources, verifies candidate similarity, creates a deterministic SHA-256 fingerprint, and anchors/verifies proofs on Polygon Amoy testnet."
+    long_about = "ProofFace takes face images, discovers public matching web sources, verifies candidate similarity, creates a deterministic SHA-256 fingerprint, and anchors/verifies proofs on Polygon Amoy testnet."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -19,18 +19,22 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Run end-to-end verification pipeline on an input face image
+    /// Run verification pipeline on single or multiple face images
     Verify {
-        /// Path to input JPEG or PNG image containing a face
-        #[arg(value_name = "IMAGE_PATH")]
-        image_path: PathBuf,
+        /// Path(s) to input JPEG/PNG images or directory containing images
+        #[arg(value_name = "IMAGE_PATHS", required = true)]
+        image_paths: Vec<PathBuf>,
 
-        /// Optional custom search query or person/influencer name (defaults to image filename)
+        /// Optional custom search query or person/influencer name (single image mode)
         #[arg(short, long, value_name = "SEARCH_QUERY")]
         query: Option<String>,
+
+        /// Require 100% of images to be verified in multi-image mode (fails if any image is unverified)
+        #[arg(short, long)]
+        strict: bool,
     },
 
-    /// Run batch verification across multiple images or a directory
+    /// Run batch verification across multiple images or a directory (alias for multi-image verify)
     Batch {
         /// List of image paths or directory containing images
         #[arg(value_name = "IMAGE_PATHS", required = true)]

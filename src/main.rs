@@ -25,13 +25,29 @@ async fn main() -> Result<()> {
     let config = Config::from_env()?;
 
     match cli.command {
-        Commands::Verify { image_path, query } => {
+        Commands::Verify { image_paths, query, strict } => {
             let pipeline = Pipeline::new(config);
-            match pipeline.run_verification(&image_path, query.as_deref()).await {
-                Ok(_) => std::process::exit(0),
-                Err(e) => {
-                    eprintln!("\nPipeline execution halted: {e}");
-                    std::process::exit(1);
+            if image_paths.len() == 1 && image_paths[0].is_file() {
+                match pipeline.run_verification(&image_paths[0], query.as_deref()).await {
+                    Ok(_) => std::process::exit(0),
+                    Err(e) => {
+                        eprintln!("\nPipeline execution halted: {e}");
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                match pipeline.run_batch_verification(&image_paths, strict).await {
+                    Ok(results) => {
+                        if strict && results.iter().any(|(_, r)| !matches!(r, proofface::models::VerificationOutcome::Verified { .. })) {
+                            std::process::exit(1);
+                        } else {
+                            std::process::exit(0);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("\nBatch verification failed: {e}");
+                        std::process::exit(1);
+                    }
                 }
             }
         }
