@@ -1,0 +1,29 @@
+[package]
+name = "proofface"
+version = "0.1.0"
+edition = "2021"
+authors = ["Nikhil Kumar Panigrahi <nikhilkumarpanigrahi29@gmail.com>"]
+description = "Face -> Web Discovery -> Blockchain Proof Verification Pipeline"
+
+[dependencies]
+tokio = { version = "1.40", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenvy = "0.15"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+clap = { version = "4.5", features = ["derive"] }
+sha2 = "0.10"
+sha3 = "0.10"
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+url = "2.5"
+async-trait = "0.1"
+k256 = { version = "0.13", features = ["ecdsa"] }
+
+[dev-dependencies]
+tempfile = "3.12"
+tokio-test = "0.4"
