@@ -26,7 +26,7 @@ impl SearchProvider for SerpApiProvider {
     }
 
     async fn search(&self, request: &SearchRequest) -> Result<Vec<SearchResult>> {
-        let url = "https://serpapi.com/search";
+        let url = "https://serpapi.com/search.json";
         let response = self
             .client
             .get(url)
@@ -35,6 +35,8 @@ impl SearchProvider for SerpApiProvider {
                 ("api_key", self.api_key.as_str()),
                 ("engine", "google"),
                 ("num", &request.max_results.to_string()),
+                ("hl", "en"),
+                ("gl", "us"),
             ])
             .send()
             .await
@@ -59,6 +61,7 @@ impl SearchProvider for SerpApiProvider {
 
         let mut results = Vec::new();
 
+        // 1. Organic Search Results
         if let Some(organic_results) = json.get("organic_results").and_then(|v| v.as_array()) {
             for item in organic_results {
                 if let Some(link) = item.get("link").and_then(|v| v.as_str()) {
@@ -67,6 +70,7 @@ impl SearchProvider for SerpApiProvider {
                     let media_url = item
                         .get("thumbnail")
                         .or_else(|| item.get("image"))
+                        .or_else(|| item.get("favicons").and_then(|f| f.get("high_res")))
                         .and_then(|v| v.as_str())
                         .map(String::from);
 
@@ -79,6 +83,35 @@ impl SearchProvider for SerpApiProvider {
                     });
                 }
             }
+        }
+
+        // 2. Inline Images / Knowledge Graph Images
+        if let Some(inline_images) = json.get("inline_images").and_then(|v| v.as_array()) {
+            for item in inline_images {
+                if let Some(link) = item.get("link").or_else(|| item.get("source")).and_then(|v| v.as_str()) {
+                    let title = item.get("title").and_then(|v| v.as_str()).map(String::from);
+                    let media_url = item
+                        .get("thumbnail")
+                        .or_else(|| item.get("original"))
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+
+                    results.push(SearchResult {
+                        url: link.to_string(),
+                        title,
+                        snippet: title.clone(),
+                        media_url,
+                        provider: self.name().into(),
+                    });
+                }
+            }
+        }
+
+        if results.is_empty() {
+            return Err(PipelineError::SearchProviderError {
+                provider: self.name().into(),
+                message: "No search results returned by SerpApi".into(),
+            });
         }
 
         Ok(results)
