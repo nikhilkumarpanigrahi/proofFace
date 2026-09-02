@@ -25,9 +25,9 @@ async fn main() -> Result<()> {
     let config = Config::from_env()?;
 
     match cli.command {
-        Commands::Verify { image_path } => {
+        Commands::Verify { image_path, query } => {
             let pipeline = Pipeline::new(config);
-            match pipeline.run_verification(&image_path).await {
+            match pipeline.run_verification(&image_path, query.as_deref()).await {
                 Ok(_) => std::process::exit(0),
                 Err(e) => {
                     eprintln!("\nPipeline execution halted: {e}");
@@ -35,9 +35,9 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        Commands::TamperDemo { image_path } => {
+        Commands::TamperDemo { image_path, query } => {
             let pipeline = Pipeline::new(config);
-            match pipeline.run_tamper_demo(&image_path).await {
+            match pipeline.run_tamper_demo(&image_path, query.as_deref()).await {
                 Ok(_) => std::process::exit(0),
                 Err(e) => {
                     eprintln!("\nTamper demo halted: {e}");

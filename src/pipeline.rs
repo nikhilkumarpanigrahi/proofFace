@@ -50,7 +50,11 @@ impl Pipeline {
     }
 
     /// Executes the full 7-stage verification pipeline.
-    pub async fn run_verification(&self, image_path: &Path) -> Result<VerificationOutcome> {
+    pub async fn run_verification(
+        &self,
+        image_path: &Path,
+        custom_query: Option<&str>,
+    ) -> Result<VerificationOutcome> {
         println!("\n╔══════════════════════════════════════════════════════════╗");
         println!("║                      PROOFFACE 🦀                        ║");
         println!("║     Face → Web Discovery → Blockchain Proof              ║");
@@ -80,11 +84,15 @@ impl Pipeline {
         println!("✓ L2-normalized 128-dim embedding generated");
 
         // [4/7] Searching public web
-        let query_stem = image_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("face public profile");
-        let search_query = format!("{} profile photo", query_stem);
+        let search_query = if let Some(q) = custom_query {
+            q.to_string()
+        } else {
+            let query_stem = image_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("face profile");
+            format!("{} profile photo", query_stem)
+        };
 
         println!("[4/7] Searching public web for candidates (query: \"{}\")...", search_query);
         let search_req = SearchRequest {
@@ -280,13 +288,17 @@ impl Pipeline {
     }
 
     /// Runs a simulated tamper demonstration against an existing proof record.
-    pub async fn run_tamper_demo(&self, image_path: &Path) -> Result<VerificationOutcome> {
+    pub async fn run_tamper_demo(
+        &self,
+        image_path: &Path,
+        custom_query: Option<&str>,
+    ) -> Result<VerificationOutcome> {
         println!("\n╔══════════════════════════════════════════════════════════╗");
         println!("║             PROOFFACE 🦀 TAMPER DEMO                    ║");
         println!("║     Cryptographic Invariant & Mismatch Proof             ║");
         println!("╚══════════════════════════════════════════════════════════╝\n");
 
-        let outcome = self.run_verification(image_path).await?;
+        let outcome = self.run_verification(image_path, custom_query).await?;
 
         if let VerificationOutcome::Verified {
             fingerprint,

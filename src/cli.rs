@@ -24,6 +24,10 @@ pub enum Commands {
         /// Path to input JPEG or PNG image containing a face
         #[arg(value_name = "IMAGE_PATH")]
         image_path: PathBuf,
+
+        /// Optional custom search query or person/influencer name (defaults to image filename)
+        #[arg(short, long, value_name = "SEARCH_QUERY")]
+        query: Option<String>,
     },
 
     /// Demonstrate successful verification followed by cryptographic tamper detection
@@ -31,6 +35,10 @@ pub enum Commands {
         /// Path to input JPEG or PNG image
         #[arg(value_name = "IMAGE_PATH")]
         image_path: PathBuf,
+
+        /// Optional custom search query or person/influencer name
+        #[arg(short, long, value_name = "SEARCH_QUERY")]
+        query: Option<String>,
     },
 
     /// Inspect a recorded proof directly from Polygon Amoy testnet
