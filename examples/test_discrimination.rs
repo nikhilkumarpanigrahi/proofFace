@@ -19,5 +19,8 @@ fn main() {
     let emb2 = embedder.generate_embedding(&faces2[0]).unwrap();
 
     let sim = cosine_similarity(&emb1, &emb2).unwrap();
-    println!("Similarity between Ishan Sharma and Cristiano Ronaldo: {:.4}", sim);
+    println!(
+        "Similarity between Ishan Sharma and Cristiano Ronaldo: {:.4}",
+        sim
+    );
 }

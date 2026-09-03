@@ -4,9 +4,9 @@ pub mod public_web;
 pub mod serpapi;
 pub mod tavily;
 
-use async_trait::async_trait;
 use crate::error::Result;
 use crate::models::{SearchRequest, SearchResult};
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait SearchProvider: Send + Sync {

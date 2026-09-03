@@ -83,7 +83,8 @@ impl ContractEncoder {
 
             let str_start = str_offset + 32;
             if output_bytes.len() >= str_start + str_len {
-                if let Ok(url) = std::str::from_utf8(&output_bytes[str_start..str_start + str_len]) {
+                if let Ok(url) = std::str::from_utf8(&output_bytes[str_start..str_start + str_len])
+                {
                     return Some((fp, url.to_string(), timestamp, true));
                 }
             }

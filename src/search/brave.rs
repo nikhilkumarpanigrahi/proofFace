@@ -1,7 +1,7 @@
 use super::SearchProvider;
-use async_trait::async_trait;
 use crate::error::{PipelineError, Result};
 use crate::models::{SearchRequest, SearchResult};
+use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::Value;
 
@@ -49,12 +49,14 @@ impl SearchProvider for BraveSearchProvider {
             });
         }
 
-        let json: Value = response.json().await.map_err(|e| {
-            PipelineError::SearchProviderError {
-                provider: self.name().into(),
-                message: format!("Failed to parse response JSON: {e}"),
-            }
-        })?;
+        let json: Value =
+            response
+                .json()
+                .await
+                .map_err(|e| PipelineError::SearchProviderError {
+                    provider: self.name().into(),
+                    message: format!("Failed to parse response JSON: {e}"),
+                })?;
 
         let mut results = Vec::new();
 

@@ -68,7 +68,10 @@ impl ContentFetcher {
         if bytes.len() > MAX_DOWNLOAD_SIZE_BYTES {
             return Err(PipelineError::CandidateFetchFailed {
                 url: url.to_string(),
-                reason: format!("Downloaded payload exceeds size limit ({} bytes)", bytes.len()),
+                reason: format!(
+                    "Downloaded payload exceeds size limit ({} bytes)",
+                    bytes.len()
+                ),
             });
         }
 

@@ -1,4 +1,7 @@
-use super::{SearchProvider, brave::BraveSearchProvider, public_web::PublicWebSearchProvider, serpapi::SerpApiProvider, tavily::TavilySearchProvider};
+use super::{
+    brave::BraveSearchProvider, public_web::PublicWebSearchProvider, serpapi::SerpApiProvider,
+    tavily::TavilySearchProvider, SearchProvider,
+};
 use crate::config::Config;
 use crate::content::dedup::CandidateDeduplicator;
 use crate::error::{PipelineError, Result};
@@ -31,10 +34,14 @@ impl SearchOrchestrator {
     }
 
     pub fn from_config(config: &Config) -> Self {
-        let primary = Self::create_provider(&config.search_provider, config.search_api_key.as_deref());
+        let primary =
+            Self::create_provider(&config.search_provider, config.search_api_key.as_deref());
 
         let fallback = if let Some(fb_name) = &config.search_fallback_provider {
-            Some(Self::create_provider(fb_name, config.search_fallback_api_key.as_deref()))
+            Some(Self::create_provider(
+                fb_name,
+                config.search_fallback_api_key.as_deref(),
+            ))
         } else if config.search_provider != "public_web" {
             Some(Arc::new(PublicWebSearchProvider::new()) as Arc<dyn SearchProvider>)
         } else {
@@ -80,16 +87,26 @@ impl SearchOrchestrator {
     }
 
     /// Executes search with retries and automatic fallback to secondary provider.
-    pub async fn search_with_resilience(&self, request: &SearchRequest) -> Result<Vec<SearchResult>> {
+    pub async fn search_with_resilience(
+        &self,
+        request: &SearchRequest,
+    ) -> Result<Vec<SearchResult>> {
         // Try Primary Provider with retries
         info!(provider = self.primary.name(), query = %request.query, "Initiating web search discovery");
         match self.try_provider(self.primary.as_ref(), request).await {
             Ok(results) if !results.is_empty() => {
-                info!(provider = self.primary.name(), count = results.len(), "Search successful on primary provider");
+                info!(
+                    provider = self.primary.name(),
+                    count = results.len(),
+                    "Search successful on primary provider"
+                );
                 return Ok(Self::deduplicate_results(results));
             }
             Ok(_) => {
-                warn!(provider = self.primary.name(), "Primary search returned 0 candidates");
+                warn!(
+                    provider = self.primary.name(),
+                    "Primary search returned 0 candidates"
+                );
             }
             Err(e) => {
                 warn!(provider = self.primary.name(), error = %e, "Primary search provider failed");
@@ -98,14 +115,24 @@ impl SearchOrchestrator {
 
         // Try Fallback Provider if configured
         if let Some(fallback_provider) = &self.fallback {
-            info!(provider = fallback_provider.name(), "Switching to search fallback provider");
+            info!(
+                provider = fallback_provider.name(),
+                "Switching to search fallback provider"
+            );
             match self.try_provider(fallback_provider.as_ref(), request).await {
                 Ok(results) if !results.is_empty() => {
-                    info!(provider = fallback_provider.name(), count = results.len(), "Search successful on fallback provider");
+                    info!(
+                        provider = fallback_provider.name(),
+                        count = results.len(),
+                        "Search successful on fallback provider"
+                    );
                     return Ok(Self::deduplicate_results(results));
                 }
                 Ok(_) => {
-                    warn!(provider = fallback_provider.name(), "Fallback search returned 0 candidates");
+                    warn!(
+                        provider = fallback_provider.name(),
+                        "Fallback search returned 0 candidates"
+                    );
                 }
                 Err(e) => {
                     warn!(provider = fallback_provider.name(), error = %e, "Fallback search provider failed");

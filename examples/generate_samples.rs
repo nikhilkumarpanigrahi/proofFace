@@ -32,7 +32,8 @@ fn main() {
             let is_right_eye = (x as f32 - 180.0).powi(2) + (y as f32 - 125.0).powi(2) < 80.0;
 
             // Mouth region
-            let is_mouth = (x as f32 - 150.0).powi(2) / 300.0 + (y as f32 - 185.0).powi(2) / 40.0 < 1.0;
+            let is_mouth =
+                (x as f32 - 150.0).powi(2) / 300.0 + (y as f32 - 185.0).powi(2) / 40.0 < 1.0;
 
             if is_left_eye || is_right_eye {
                 Rgb([40, 30, 25])
@@ -49,7 +50,8 @@ fn main() {
     });
 
     let mut buf = Vec::new();
-    img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Jpeg).unwrap();
+    img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Jpeg)
+        .unwrap();
     fs::write(samples_dir.join("input.jpg"), buf).unwrap();
 
     println!("✓ Generated samples/input.jpg");

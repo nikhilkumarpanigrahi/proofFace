@@ -1,7 +1,7 @@
 use super::SearchProvider;
-use async_trait::async_trait;
 use crate::error::{PipelineError, Result};
 use crate::models::{SearchRequest, SearchResult};
+use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::{json, Value};
 
@@ -52,12 +52,14 @@ impl SearchProvider for TavilySearchProvider {
             });
         }
 
-        let json: Value = response.json().await.map_err(|e| {
-            PipelineError::SearchProviderError {
-                provider: self.name().into(),
-                message: format!("Failed to parse response JSON: {e}"),
-            }
-        })?;
+        let json: Value =
+            response
+                .json()
+                .await
+                .map_err(|e| PipelineError::SearchProviderError {
+                    provider: self.name().into(),
+                    message: format!("Failed to parse response JSON: {e}"),
+                })?;
 
         let mut results = Vec::new();
 
@@ -65,7 +67,10 @@ impl SearchProvider for TavilySearchProvider {
             for item in res_arr {
                 if let Some(link) = item.get("url").and_then(|v| v.as_str()) {
                     let title = item.get("title").and_then(|v| v.as_str()).map(String::from);
-                    let snippet = item.get("content").and_then(|v| v.as_str()).map(String::from);
+                    let snippet = item
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
                     let media_url = item
                         .get("images")
                         .and_then(|img_arr| img_arr.as_array())

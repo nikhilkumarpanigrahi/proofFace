@@ -1,7 +1,7 @@
 use super::SearchProvider;
-use async_trait::async_trait;
 use crate::error::{PipelineError, Result};
 use crate::models::{SearchRequest, SearchResult};
+use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::Value;
 
@@ -52,10 +52,11 @@ impl SearchProvider for PublicWebSearchProvider {
                     {
                         for item in search_items {
                             if let Some(title) = item.get("title").and_then(|t| t.as_str()) {
-                                let snippet = item
-                                    .get("snippet")
-                                    .and_then(|s| s.as_str())
-                                    .map(|s| s.replace("<span class=\"searchmatch\">", "").replace("</span>", ""));
+                                let snippet =
+                                    item.get("snippet").and_then(|s| s.as_str()).map(|s| {
+                                        s.replace("<span class=\"searchmatch\">", "")
+                                            .replace("</span>", "")
+                                    });
 
                                 let page_url = format!(
                                     "https://en.wikipedia.org/wiki/{}",
@@ -69,7 +70,8 @@ impl SearchProvider for PublicWebSearchProvider {
                                 );
 
                                 let mut media_url = None;
-                                if let Ok(summary_resp) = self.client.get(&summary_url).send().await {
+                                if let Ok(summary_resp) = self.client.get(&summary_url).send().await
+                                {
                                     if let Ok(summary_json) = summary_resp.json::<Value>().await {
                                         if let Some(src) = summary_json
                                             .get("thumbnail")
@@ -104,10 +106,19 @@ impl SearchProvider for PublicWebSearchProvider {
         if let Ok(resp) = self.client.get(&ddg_url).send().await {
             if resp.status().is_success() {
                 if let Ok(json) = resp.json::<Value>().await {
-                    let abstract_url = json.get("AbstractURL").and_then(|v| v.as_str()).unwrap_or("");
+                    let abstract_url = json
+                        .get("AbstractURL")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
                     let heading = json.get("Heading").and_then(|v| v.as_str()).unwrap_or("");
-                    let abstract_text = json.get("AbstractText").and_then(|v| v.as_str()).unwrap_or("");
-                    let image_url = json.get("Image").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+                    let abstract_text = json
+                        .get("AbstractText")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let image_url = json
+                        .get("Image")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
 
                     if !abstract_url.is_empty() {
                         results.push(SearchResult {
@@ -128,8 +139,10 @@ impl SearchProvider for PublicWebSearchProvider {
                     // Related topics
                     if let Some(related) = json.get("RelatedTopics").and_then(|r| r.as_array()) {
                         for topic in related.iter().take(5) {
-                            if let Some(first_url) = topic.get("FirstURL").and_then(|v| v.as_str()) {
-                                let text = topic.get("Text").and_then(|v| v.as_str()).map(String::from);
+                            if let Some(first_url) = topic.get("FirstURL").and_then(|v| v.as_str())
+                            {
+                                let text =
+                                    topic.get("Text").and_then(|v| v.as_str()).map(String::from);
                                 let icon_url = topic
                                     .get("Icon")
                                     .and_then(|i| i.get("URL"))

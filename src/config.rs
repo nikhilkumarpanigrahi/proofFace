@@ -32,10 +32,17 @@ impl Config {
     pub fn from_env() -> Result<Self> {
         let _ = dotenvy::dotenv();
 
-        let search_provider = env::var("SEARCH_PROVIDER").unwrap_or_else(|_| "public_web".to_string());
-        let search_api_key = env::var("SEARCH_API_KEY").ok().filter(|s| !s.trim().is_empty());
-        let search_fallback_provider = env::var("SEARCH_FALLBACK_PROVIDER").ok().filter(|s| !s.trim().is_empty());
-        let search_fallback_api_key = env::var("SEARCH_FALLBACK_API_KEY").ok().filter(|s| !s.trim().is_empty());
+        let search_provider =
+            env::var("SEARCH_PROVIDER").unwrap_or_else(|_| "public_web".to_string());
+        let search_api_key = env::var("SEARCH_API_KEY")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let search_fallback_provider = env::var("SEARCH_FALLBACK_PROVIDER")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let search_fallback_api_key = env::var("SEARCH_FALLBACK_API_KEY")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
 
         let search_timeout_ms = env::var("SEARCH_TIMEOUT_MS")
             .ok()

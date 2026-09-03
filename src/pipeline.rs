@@ -9,8 +9,8 @@ use crate::face::embedder::FaceEmbedder;
 use crate::face::similarity::{cosine_similarity, evaluate_similarity};
 use crate::face::{DefaultFaceEngine, FaceEngine};
 use crate::models::{
-    Candidate, CandidateEvaluation, DiscoveredContent, FaceEmbedding,
-    MatchConfidence, SearchRequest, VerificationOutcome,
+    Candidate, CandidateEvaluation, DiscoveredContent, FaceEmbedding, MatchConfidence,
+    SearchRequest, VerificationOutcome,
 };
 use crate::resilience::BoundedPool;
 use crate::search::orchestrator::SearchOrchestrator;
@@ -63,7 +63,10 @@ impl Pipeline {
         // [1/7] Validating image
         print!("[1/7] Validating image... ");
         let image_bytes = fs::read(image_path).map_err(|e| {
-            PipelineError::InvalidImage(format!("Could not read file {}: {e}", image_path.display()))
+            PipelineError::InvalidImage(format!(
+                "Could not read file {}: {e}",
+                image_path.display()
+            ))
         })?;
         let _ = FaceDetector::new().validate_and_load(&image_bytes)?;
         println!("✓ Valid image ({} bytes)", image_bytes.len());
@@ -74,7 +77,10 @@ impl Pipeline {
         if faces.len() > 1 {
             println!("⚠ {} faces found (selecting primary face)", faces.len());
         } else {
-            println!("✓ 1 face detected (confidence: {:.2})", faces[0].bbox.confidence);
+            println!(
+                "✓ 1 face detected (confidence: {:.2})",
+                faces[0].bbox.confidence
+            );
         }
         let target_face = &faces[0];
 
@@ -102,8 +108,14 @@ impl Pipeline {
             image_bytes: Some(image_bytes.clone()),
         };
 
-        let search_results = self.search_orchestrator.search_with_resilience(&search_req).await?;
-        println!("      ✓ {} search candidate URLs discovered", search_results.len());
+        let search_results = self
+            .search_orchestrator
+            .search_with_resilience(&search_req)
+            .await?;
+        println!(
+            "      ✓ {} search candidate URLs discovered",
+            search_results.len()
+        );
 
         // [5/7] Verifying candidates with bounded concurrency
         println!(
@@ -127,7 +139,11 @@ impl Pipeline {
             println!("╚══════════════════════════════════════════════════════════╝");
 
             for (i, eval) in candidate_matches.iter().take(4).enumerate() {
-                let title = eval.candidate.title.as_deref().unwrap_or("Public Social / Web Post");
+                let title = eval
+                    .candidate
+                    .title
+                    .as_deref()
+                    .unwrap_or("Public Social / Web Post");
                 let clean_title: String = if title.chars().count() > 50 {
                     format!("{}...", title.chars().take(47).collect::<String>())
                 } else {
@@ -162,10 +178,18 @@ impl Pipeline {
                 println!("║                     UNVERIFIED ✗                         ║");
                 println!("╚══════════════════════════════════════════════════════════╝\n");
                 println!("ℹ Result: No authentic public web source found for this face.");
-                println!("  • Required Biometric Threshold : >= {:.1}%", self.config.high_confidence_threshold * 100.0);
-                println!("  • Highest Candidate Similarity : {:.1}% (Insufficient)", eval.similarity * 100.0);
+                println!(
+                    "  • Required Biometric Threshold : >= {:.1}%",
+                    self.config.high_confidence_threshold * 100.0
+                );
+                println!(
+                    "  • Highest Candidate Similarity : {:.1}% (Insufficient)",
+                    eval.similarity * 100.0
+                );
                 println!("  • Diagnosis:");
-                println!("    1. This appears to be a private or personal photo not published online.");
+                println!(
+                    "    1. This appears to be a private or personal photo not published online."
+                );
                 println!("    2. No public social media posts or news articles match this face.");
                 println!("    3. Blockchain proof not anchored (zero false-positives policy).\n");
 
@@ -200,11 +224,15 @@ impl Pipeline {
             retrieved_at: Utc::now(),
         };
 
-        let (fingerprint_hex, fingerprint_bytes) = ContentCanonicalizer::fingerprint(&discovered_content)?;
+        let (fingerprint_hex, fingerprint_bytes) =
+            ContentCanonicalizer::fingerprint(&discovered_content)?;
         println!("✓ Fingerprint: {}", fingerprint_hex);
 
         // Registering proof on Polygon Amoy
-        print!("      Anchoring on Polygon Amoy (Chain ID {})... ", self.config.chain_id);
+        print!(
+            "      Anchoring on Polygon Amoy (Chain ID {})... ",
+            self.config.chain_id
+        );
         let proof = self
             .polygon_registry
             .register_proof(&fingerprint_bytes, &discovered_content.source_url)
@@ -281,7 +309,8 @@ impl Pipeline {
                             if let Some(candidate_face) = faces.first() {
                                 if let Ok(cand_emb) = embedder.generate_embedding(candidate_face) {
                                     if let Ok(sim) = cosine_similarity(&target_emb, &cand_emb) {
-                                        let conf = evaluate_similarity(sim, high_thresh, poss_thresh);
+                                        let conf =
+                                            evaluate_similarity(sim, high_thresh, poss_thresh);
 
                                         println!(
                                             "      #Candidate {:02} ........ similarity: {:.3} ({:?})",
@@ -318,7 +347,11 @@ impl Pipeline {
         }
 
         let mut results = all_matches.lock().await.clone();
-        results.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.similarity
+                .partial_cmp(&a.similarity)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(results)
     }
 
@@ -395,7 +428,11 @@ impl Pipeline {
                         let path = entry.path();
                         if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
                             let ext_lower = ext.to_lowercase();
-                            if ext_lower == "jpg" || ext_lower == "jpeg" || ext_lower == "png" || ext_lower == "webp" {
+                            if ext_lower == "jpg"
+                                || ext_lower == "jpeg"
+                                || ext_lower == "png"
+                                || ext_lower == "webp"
+                            {
                                 target_files.push(path);
                             }
                         }
@@ -411,16 +448,27 @@ impl Pipeline {
             return Ok(Vec::new());
         }
 
-        println!("⚡ Batch Queue: Found {} images to verify.\n", target_files.len());
+        println!(
+            "⚡ Batch Queue: Found {} images to verify.\n",
+            target_files.len()
+        );
 
         let mut results = Vec::new();
         let mut verified_count = 0;
         let mut unverified_count = 0;
 
         for (idx, img_path) in target_files.iter().enumerate() {
-            let filename = img_path.file_name().and_then(|s| s.to_str()).unwrap_or("image");
+            let filename = img_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("image");
             println!("------------------------------------------------------------");
-            println!("[Batch Item {}/{}] Processing: {}", idx + 1, target_files.len(), filename);
+            println!(
+                "[Batch Item {}/{}] Processing: {}",
+                idx + 1,
+                target_files.len(),
+                filename
+            );
             println!("------------------------------------------------------------");
 
             match self.run_verification(img_path, None).await {
@@ -435,10 +483,13 @@ impl Pipeline {
                 Err(e) => {
                     println!("\n  ✗ Item Failed: {}\n", e);
                     unverified_count += 1;
-                    results.push((img_path.clone(), VerificationOutcome::Unverified {
-                        reason: e.to_string(),
-                        best_similarity: 0.0,
-                    }));
+                    results.push((
+                        img_path.clone(),
+                        VerificationOutcome::Unverified {
+                            reason: e.to_string(),
+                            best_similarity: 0.0,
+                        },
+                    ));
                 }
             }
         }
@@ -451,18 +502,36 @@ impl Pipeline {
         for (i, (path, outcome)) in results.iter().enumerate() {
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("image");
             match outcome {
-                VerificationOutcome::Verified { similarity, source_url, tx_hash, .. } => {
+                VerificationOutcome::Verified {
+                    similarity,
+                    source_url,
+                    tx_hash,
+                    ..
+                } => {
                     println!(" {:2}. [✓ VERIFIED] {}", i + 1, name);
                     println!("     Creator/Source : {}", source_url);
-                    println!("     Match Score    : {:.1}% (HighConfidence)", similarity * 100.0);
+                    println!(
+                        "     Match Score    : {:.1}% (HighConfidence)",
+                        similarity * 100.0
+                    );
                     println!("     Polygon Tx     : {}\n", tx_hash);
                 }
-                VerificationOutcome::Unverified { reason, best_similarity } => {
+                VerificationOutcome::Unverified {
+                    reason,
+                    best_similarity,
+                } => {
                     println!(" {:2}. [✗ UNVERIFIED] {}", i + 1, name);
                     println!("     Reason         : {}", reason);
-                    println!("     Highest Score  : {:.1}% (Insufficient)\n", best_similarity * 100.0);
+                    println!(
+                        "     Highest Score  : {:.1}% (Insufficient)\n",
+                        best_similarity * 100.0
+                    );
                 }
-                VerificationOutcome::Tampered { stored_fingerprint, source_url, .. } => {
+                VerificationOutcome::Tampered {
+                    stored_fingerprint,
+                    source_url,
+                    ..
+                } => {
                     println!(" {:2}. [✗ TAMPERED] {}", i + 1, name);
                     println!("     Source         : {}", source_url);
                     println!("     On-Chain Hash  : {}\n", stored_fingerprint);
@@ -472,11 +541,23 @@ impl Pipeline {
 
         println!("------------------------------------------------------------");
         println!("• Total Images Processed : {}", target_files.len());
-        println!("• Verified Authentic     : {} / {}", verified_count, target_files.len());
-        println!("• Unverified / Private   : {} / {}", unverified_count, target_files.len());
+        println!(
+            "• Verified Authentic     : {} / {}",
+            verified_count,
+            target_files.len()
+        );
+        println!(
+            "• Unverified / Private   : {} / {}",
+            unverified_count,
+            target_files.len()
+        );
 
         if strict && unverified_count > 0 {
-            println!("\n⛔ STRICT MODE FAILED: {}/{} image(s) could not be verified.", unverified_count, target_files.len());
+            println!(
+                "\n⛔ STRICT MODE FAILED: {}/{} image(s) could not be verified.",
+                unverified_count,
+                target_files.len()
+            );
             println!("   Requirement: All images in the batch must be 100% verified.");
         } else if verified_count == target_files.len() {
             println!("\n🌟 ALL IMAGES VERIFIED (100% Authentic Public Creators Found!)");

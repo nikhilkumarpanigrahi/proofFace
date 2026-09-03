@@ -2,9 +2,9 @@ pub mod detector;
 pub mod embedder;
 pub mod similarity;
 
-use async_trait::async_trait;
 use crate::error::{PipelineError, Result};
 use crate::models::{DetectedFace, FaceEmbedding};
+use async_trait::async_trait;
 use detector::FaceDetector;
 use embedder::FaceEmbedder;
 

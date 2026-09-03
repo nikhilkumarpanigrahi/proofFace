@@ -19,16 +19,27 @@ async fn main() -> Result<()> {
 
     tracing_subscriber::registry()
         .with(filter)
-        .with(tracing_subscriber::fmt::layer().with_target(false).compact())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .compact(),
+        )
         .init();
 
     let config = Config::from_env()?;
 
     match cli.command {
-        Commands::Verify { image_paths, query, strict } => {
+        Commands::Verify {
+            image_paths,
+            query,
+            strict,
+        } => {
             let pipeline = Pipeline::new(config);
             if image_paths.len() == 1 && image_paths[0].is_file() {
-                match pipeline.run_verification(&image_paths[0], query.as_deref()).await {
+                match pipeline
+                    .run_verification(&image_paths[0], query.as_deref())
+                    .await
+                {
                     Ok(_) => std::process::exit(0),
                     Err(e) => {
                         eprintln!("\nPipeline execution halted: {e}");
@@ -38,7 +49,14 @@ async fn main() -> Result<()> {
             } else {
                 match pipeline.run_batch_verification(&image_paths, strict).await {
                     Ok(results) => {
-                        if strict && results.iter().any(|(_, r)| !matches!(r, proofface::models::VerificationOutcome::Verified { .. })) {
+                        if strict
+                            && results.iter().any(|(_, r)| {
+                                !matches!(
+                                    r,
+                                    proofface::models::VerificationOutcome::Verified { .. }
+                                )
+                            })
+                        {
                             std::process::exit(1);
                         } else {
                             std::process::exit(0);
@@ -51,11 +69,18 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        Commands::Batch { image_paths, strict } => {
+        Commands::Batch {
+            image_paths,
+            strict,
+        } => {
             let pipeline = Pipeline::new(config);
             match pipeline.run_batch_verification(&image_paths, strict).await {
                 Ok(results) => {
-                    if strict && results.iter().any(|(_, r)| !matches!(r, proofface::models::VerificationOutcome::Verified { .. })) {
+                    if strict
+                        && results.iter().any(|(_, r)| {
+                            !matches!(r, proofface::models::VerificationOutcome::Verified { .. })
+                        })
+                    {
                         std::process::exit(1);
                     } else {
                         std::process::exit(0);
@@ -69,7 +94,10 @@ async fn main() -> Result<()> {
         }
         Commands::TamperDemo { image_path, query } => {
             let pipeline = Pipeline::new(config);
-            match pipeline.run_tamper_demo(&image_path, query.as_deref()).await {
+            match pipeline
+                .run_tamper_demo(&image_path, query.as_deref())
+                .await
+            {
                 Ok(_) => std::process::exit(0),
                 Err(e) => {
                     eprintln!("\nTamper demo halted: {e}");
@@ -117,12 +145,21 @@ async fn main() -> Result<()> {
             println!("║             PROOFFACE 🦀 HEALTH CHECK                    ║");
             println!("╚══════════════════════════════════════════════════════════╝\n");
             println!("• Search Provider         : {}", config.search_provider);
-            println!("• Search Fallback Provider: {:?}", config.search_fallback_provider);
+            println!(
+                "• Search Fallback Provider: {:?}",
+                config.search_fallback_provider
+            );
             println!("• Polygon RPC Primary     : {}", config.rpc_primary);
             println!("• Polygon RPC Secondary   : {:?}", config.rpc_secondary);
             println!("• Chain ID                : {}", config.chain_id);
-            println!("• Match Thresholds        : High >= {:.2}, Possible >= {:.2}", config.high_confidence_threshold, config.possible_match_threshold);
-            println!("• Max Concurrency         : {}", config.max_concurrent_candidates);
+            println!(
+                "• Match Thresholds        : High >= {:.2}, Possible >= {:.2}",
+                config.high_confidence_threshold, config.possible_match_threshold
+            );
+            println!(
+                "• Max Concurrency         : {}",
+                config.max_concurrent_candidates
+            );
             println!("\nConfiguration valid and ready.");
         }
     }

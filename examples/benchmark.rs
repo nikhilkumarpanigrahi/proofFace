@@ -50,7 +50,8 @@ fn main() {
     );
 
     // 3. Face Detection & 128-dim Embedding Benchmark
-    let raw_image_bytes = std::fs::read("samples/input.jpg").expect("samples/input.jpg required for benchmark");
+    let raw_image_bytes =
+        std::fs::read("samples/input.jpg").expect("samples/input.jpg required for benchmark");
     let detector = FaceDetector::new();
     let embedder = FaceEmbedder::new();
 

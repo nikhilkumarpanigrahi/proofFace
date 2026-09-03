@@ -1,7 +1,7 @@
 use super::SearchProvider;
-use async_trait::async_trait;
 use crate::error::{PipelineError, Result};
 use crate::models::{SearchRequest, SearchResult};
+use async_trait::async_trait;
 use reqwest::multipart::{Form, Part};
 use reqwest::Client;
 use serde_json::Value;
@@ -35,7 +35,13 @@ impl SerpApiProvider {
             .text("reqtype", "fileupload")
             .part("fileToUpload", part);
 
-        if let Ok(resp) = self.client.post("https://catbox.moe/user/api.php").multipart(form).send().await {
+        if let Ok(resp) = self
+            .client
+            .post("https://catbox.moe/user/api.php")
+            .multipart(form)
+            .send()
+            .await
+        {
             if resp.status().is_success() {
                 if let Ok(text) = resp.text().await {
                     let trimmed = text.trim();
@@ -54,10 +60,20 @@ impl SerpApiProvider {
 
         let form2 = Form::new().part("file", part2);
 
-        if let Ok(resp) = self.client.post("https://tmpfiles.org/api/v1/upload").multipart(form2).send().await {
+        if let Ok(resp) = self
+            .client
+            .post("https://tmpfiles.org/api/v1/upload")
+            .multipart(form2)
+            .send()
+            .await
+        {
             if resp.status().is_success() {
                 if let Ok(json) = resp.json::<Value>().await {
-                    if let Some(url_str) = json.get("data").and_then(|d| d.get("url")).and_then(|v| v.as_str()) {
+                    if let Some(url_str) = json
+                        .get("data")
+                        .and_then(|d| d.get("url"))
+                        .and_then(|v| v.as_str())
+                    {
                         let dl_url = url_str.replace("tmpfiles.org/", "tmpfiles.org/dl/");
                         return Some(dl_url);
                     }
@@ -97,7 +113,9 @@ impl SearchProvider for SerpApiProvider {
                 if let Ok(resp) = lens_response {
                     if resp.status().is_success() {
                         if let Ok(json) = resp.json::<Value>().await {
-                            if let Some(visual_matches) = json.get("visual_matches").and_then(|v| v.as_array()) {
+                            if let Some(visual_matches) =
+                                json.get("visual_matches").and_then(|v| v.as_array())
+                            {
                                 for item in visual_matches.iter().take(request.max_results) {
                                     let link = item
                                         .get("link")
@@ -110,8 +128,14 @@ impl SearchProvider for SerpApiProvider {
                                         .and_then(|v| v.as_str());
 
                                     if let (Some(l), Some(m)) = (link, media_url) {
-                                        let title = item.get("title").and_then(|v| v.as_str()).map(String::from);
-                                        let snippet = item.get("source").and_then(|v| v.as_str()).map(String::from);
+                                        let title = item
+                                            .get("title")
+                                            .and_then(|v| v.as_str())
+                                            .map(String::from);
+                                        let snippet = item
+                                            .get("source")
+                                            .and_then(|v| v.as_str())
+                                            .map(String::from);
 
                                         results.push(SearchResult {
                                             url: l.to_string(),
@@ -148,8 +172,11 @@ impl SearchProvider for SerpApiProvider {
             if let Ok(resp) = img_response {
                 if resp.status().is_success() {
                     if let Ok(json) = resp.json::<Value>().await {
-                        if let Some(images_arr) = json.get("images_results").and_then(|v| v.as_array()) {
-                            for item in images_arr.iter().take(request.max_results - results.len()) {
+                        if let Some(images_arr) =
+                            json.get("images_results").and_then(|v| v.as_array())
+                        {
+                            for item in images_arr.iter().take(request.max_results - results.len())
+                            {
                                 let link = item
                                     .get("link")
                                     .or_else(|| item.get("source"))
@@ -161,8 +188,14 @@ impl SearchProvider for SerpApiProvider {
                                     .and_then(|v| v.as_str());
 
                                 if let (Some(l), Some(m)) = (link, media_url) {
-                                    let title = item.get("title").and_then(|v| v.as_str()).map(String::from);
-                                    let snippet = item.get("snippet").and_then(|v| v.as_str()).map(String::from);
+                                    let title = item
+                                        .get("title")
+                                        .and_then(|v| v.as_str())
+                                        .map(String::from);
+                                    let snippet = item
+                                        .get("snippet")
+                                        .and_then(|v| v.as_str())
+                                        .map(String::from);
 
                                     results.push(SearchResult {
                                         url: l.to_string(),
@@ -182,7 +215,10 @@ impl SearchProvider for SerpApiProvider {
         if results.is_empty() {
             return Err(PipelineError::SearchProviderError {
                 provider: self.name().into(),
-                message: format!("No candidate matches found on SerpApi for query '{}'", request.query),
+                message: format!(
+                    "No candidate matches found on SerpApi for query '{}'",
+                    request.query
+                ),
             });
         }
 

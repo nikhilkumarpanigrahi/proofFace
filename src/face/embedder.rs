@@ -5,6 +5,7 @@ use image::imageops::FilterType;
 pub const EMBEDDING_DIM: usize = 128;
 pub const TARGET_FACE_DIM: u32 = 112;
 
+#[derive(Default)]
 pub struct FaceEmbedder;
 
 impl FaceEmbedder {
@@ -81,8 +82,11 @@ impl FaceEmbedder {
                 feature_vec[cell_idx] = diff / total;
 
                 // Vertical gradient across high-pass facial features
-                let top_val = hp_grid[(start_y * TARGET_FACE_DIM + start_x + cell_size / 2) as usize];
-                let bot_val = hp_grid[((start_y + cell_size - 1) * TARGET_FACE_DIM + start_x + cell_size / 2) as usize];
+                let top_val =
+                    hp_grid[(start_y * TARGET_FACE_DIM + start_x + cell_size / 2) as usize];
+                let bot_val = hp_grid[((start_y + cell_size - 1) * TARGET_FACE_DIM
+                    + start_x
+                    + cell_size / 2) as usize];
                 feature_vec[64 + cell_idx] = (top_val - bot_val) / 255.0;
             }
         }

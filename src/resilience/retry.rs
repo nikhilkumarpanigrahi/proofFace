@@ -38,15 +38,16 @@ mod tests {
     async fn test_retry_succeeds_on_second_attempt() {
         let counter = AtomicUsize::new(0);
 
-        let result: Result<i32, &str> = retry_with_backoff(3, Duration::from_millis(10), || async {
-            let val = counter.fetch_add(1, Ordering::SeqCst);
-            if val == 0 {
-                Err("temporary failure")
-            } else {
-                Ok(42)
-            }
-        })
-        .await;
+        let result: Result<i32, &str> =
+            retry_with_backoff(3, Duration::from_millis(10), || async {
+                let val = counter.fetch_add(1, Ordering::SeqCst);
+                if val == 0 {
+                    Err("temporary failure")
+                } else {
+                    Ok(42)
+                }
+            })
+            .await;
 
         assert_eq!(result, Ok(42));
         assert_eq!(counter.load(Ordering::SeqCst), 2);

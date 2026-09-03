@@ -11,7 +11,10 @@ impl ContentCanonicalizer {
     pub fn canonicalize(content: &DiscoveredContent) -> Result<Vec<u8>> {
         // Strip volatile fields and normalize strings
         let normalized_source = content.source_url.trim().to_lowercase();
-        let normalized_media = content.media_url.as_deref().map(|s| s.trim().to_lowercase());
+        let normalized_media = content
+            .media_url
+            .as_deref()
+            .map(|s| s.trim().to_lowercase());
         let normalized_title = content.title.as_deref().map(|s| s.trim());
         let normalized_snippet = content.snippet.as_deref().map(|s| s.trim());
         let normalized_hash = content.content_hash.trim().to_lowercase();

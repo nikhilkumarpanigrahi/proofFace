@@ -7,6 +7,7 @@ pub const MAX_IMAGE_SIZE_BYTES: usize = 20 * 1024 * 1024; // 20 MB
 pub const MIN_IMAGE_DIMENSION: u32 = 20;
 pub const MAX_IMAGE_DIMENSION: u32 = 8192;
 
+#[derive(Default)]
 pub struct FaceDetector;
 
 impl FaceDetector {
@@ -40,9 +41,8 @@ impl FaceDetector {
             )));
         }
 
-        let img = image::load_from_memory(image_bytes).map_err(|e| {
-            PipelineError::InvalidImage(format!("Failed to decode image: {e}"))
-        })?;
+        let img = image::load_from_memory(image_bytes)
+            .map_err(|e| PipelineError::InvalidImage(format!("Failed to decode image: {e}")))?;
 
         let (width, height) = img.dimensions();
         if width < MIN_IMAGE_DIMENSION || height < MIN_IMAGE_DIMENSION {
@@ -94,10 +94,18 @@ impl FaceDetector {
 
                 if is_skin {
                     skin_pixels += 1;
-                    if x < min_x { min_x = x; }
-                    if x > max_x { max_x = x; }
-                    if y < min_y { min_y = y; }
-                    if y > max_y { max_y = y; }
+                    if x < min_x {
+                        min_x = x;
+                    }
+                    if x > max_x {
+                        max_x = x;
+                    }
+                    if y < min_y {
+                        min_y = y;
+                    }
+                    if y > max_y {
+                        max_y = y;
+                    }
                 }
             }
         }
@@ -121,7 +129,9 @@ impl FaceDetector {
             let mut crop_bytes = Vec::new();
             cropped
                 .write_to(&mut Cursor::new(&mut crop_bytes), ImageFormat::Jpeg)
-                .map_err(|e| PipelineError::FaceModelError(format!("Failed to encode crop: {e}")))?;
+                .map_err(|e| {
+                    PipelineError::FaceModelError(format!("Failed to encode crop: {e}"))
+                })?;
 
             let detected = DetectedFace {
                 bbox: BoundingBox {
@@ -148,7 +158,9 @@ impl FaceDetector {
             let mut crop_bytes = Vec::new();
             cropped
                 .write_to(&mut Cursor::new(&mut crop_bytes), ImageFormat::Jpeg)
-                .map_err(|e| PipelineError::FaceModelError(format!("Failed to encode crop: {e}")))?;
+                .map_err(|e| {
+                    PipelineError::FaceModelError(format!("Failed to encode crop: {e}"))
+                })?;
 
             Ok(vec![DetectedFace {
                 bbox: BoundingBox {

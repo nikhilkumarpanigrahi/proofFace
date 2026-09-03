@@ -102,7 +102,10 @@ fn test_content_canonicalization_and_tamper_detection() {
     };
 
     let (fp_same, _) = ContentCanonicalizer::fingerprint(&content_same_diff_time).unwrap();
-    assert_eq!(fp_orig, fp_same, "Timestamps must be non-volatile in fingerprinting");
+    assert_eq!(
+        fp_orig, fp_same,
+        "Timestamps must be non-volatile in fingerprinting"
+    );
 
     // Alter title (tamper scenario)
     let content_tampered = DiscoveredContent {
@@ -115,7 +118,10 @@ fn test_content_canonicalization_and_tamper_detection() {
     };
 
     let (fp_tampered, _) = ContentCanonicalizer::fingerprint(&content_tampered).unwrap();
-    assert_ne!(fp_orig, fp_tampered, "Tampered content MUST yield different fingerprint");
+    assert_ne!(
+        fp_orig, fp_tampered,
+        "Tampered content MUST yield different fingerprint"
+    );
 }
 
 #[test]
@@ -141,6 +147,9 @@ fn test_candidate_deduplication_heuristics() {
     let u3 = "https://example.com/page?id=99";
 
     assert!(dedup.check_and_insert(u1));
-    assert!(!dedup.check_and_insert(u2), "Tracking param variations must be deduplicated");
+    assert!(
+        !dedup.check_and_insert(u2),
+        "Tracking param variations must be deduplicated"
+    );
     assert!(dedup.check_and_insert(u3));
 }

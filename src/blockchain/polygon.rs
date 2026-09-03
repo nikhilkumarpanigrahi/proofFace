@@ -42,7 +42,10 @@ impl PolygonRegistry {
             _ => return Ok(None),
         };
 
-        let call_data = format!("0x{}", hex::encode(ContractEncoder::encode_get_proof(fingerprint)));
+        let call_data = format!(
+            "0x{}",
+            hex::encode(ContractEncoder::encode_get_proof(fingerprint))
+        );
         let payload = json!({
             "jsonrpc": "2.0",
             "method": "eth_call",
@@ -71,7 +74,9 @@ impl PolygonRegistry {
         if let Some(hex_str) = output_hex.as_str() {
             let clean_hex = hex_str.trim_start_matches("0x");
             if let Ok(bytes) = hex::decode(clean_hex) {
-                if let Some((fp, url, ts, exists)) = ContractEncoder::decode_get_proof_output(&bytes) {
+                if let Some((fp, url, ts, exists)) =
+                    ContractEncoder::decode_get_proof_output(&bytes)
+                {
                     if exists {
                         return Ok(Some(ContentProof {
                             fingerprint_hex: format!("0x{}", hex::encode(fp)),
@@ -137,7 +142,7 @@ impl PolygonRegistry {
         let mut tx_hasher = sha3::Keccak256::new();
         tx_hasher.update(fingerprint);
         tx_hasher.update(source_url.as_bytes());
-        tx_hasher.update(&block_number.to_be_bytes());
+        tx_hasher.update(block_number.to_be_bytes());
         let tx_hash_bytes = tx_hasher.finalize();
         let tx_hash = format!("0x{}", hex::encode(tx_hash_bytes));
 
@@ -172,10 +177,13 @@ impl PolygonRegistry {
             });
         }
 
-        let body: Value = resp.json().await.map_err(|e| PipelineError::BlockchainRpcError {
-            endpoint: endpoint.to_string(),
-            message: format!("Invalid JSON response: {e}"),
-        })?;
+        let body: Value = resp
+            .json()
+            .await
+            .map_err(|e| PipelineError::BlockchainRpcError {
+                endpoint: endpoint.to_string(),
+                message: format!("Invalid JSON response: {e}"),
+            })?;
 
         if let Some(err) = body.get("error") {
             return Err(PipelineError::BlockchainRpcError {
