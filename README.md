@@ -126,6 +126,26 @@ Any Network Operation:
 
 ---
 
+## Quickstart & Installation
+
+### 1. Prerequisites
+* **Rust & Cargo** (1.80+): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
+### 2. Clone & Build
+```bash
+git clone https://github.com/nikhilkumarpanigrahi/proofFace.git
+cd proofFace
+cp .env.example .env
+cargo build --release
+```
+
+### 3. Verify Configuration
+```bash
+cargo run -- health
+```
+
+---
+
 ## Terminal Experience
 
 ### 1. End-to-End Single Image Verification
