@@ -127,50 +127,31 @@ impl Pipeline {
             .evaluate_candidates(&search_results, &target_embedding)
             .await?;
 
-        // Print Top Discovered Posts Box (Top 3-4 candidate URLs found)
-        let candidate_matches: Vec<_> = evaluations
-            .iter()
-            .filter(|e| e.similarity >= self.config.possible_match_threshold)
-            .collect();
+        let best_evaluation = evaluations.first().cloned();
 
-        if !candidate_matches.is_empty() {
-            println!("\n╔══════════════════════════════════════════════════════════╗");
-            println!("║              TOP DISCOVERED PUBLIC POSTS 🌐              ║");
-            println!("╚══════════════════════════════════════════════════════════╝");
-
-            for (i, eval) in candidate_matches.iter().take(4).enumerate() {
+        let match_eval = match best_evaluation {
+            Some(eval) if eval.match_confidence == MatchConfidence::HighConfidence => {
                 let title = eval
                     .candidate
                     .title
                     .as_deref()
                     .unwrap_or("Public Social / Web Post");
-                let clean_title: String = if title.chars().count() > 50 {
-                    format!("{}...", title.chars().take(47).collect::<String>())
+                let clean_title: String = if title.chars().count() > 65 {
+                    format!("{}...", title.chars().take(62).collect::<String>())
                 } else {
                     title.to_string()
                 };
-                let platform = eval.candidate.snippet.as_deref().unwrap_or("Web Post");
+                let platform = eval.candidate.snippet.as_deref().unwrap_or("Public Web");
 
-                let badge = if eval.similarity >= self.config.high_confidence_threshold {
-                    "✓ HighConfidence"
-                } else {
-                    "~ PossibleMatch"
-                };
+                println!("\n╔══════════════════════════════════════════════════════════╗");
+                println!("║             AUTHENTIC PUBLIC POST MATCHED 🌐             ║");
+                println!("╚══════════════════════════════════════════════════════════╝");
+                println!("  Platform : [{}]", platform);
+                println!("  Title    : {}", clean_title);
+                println!("  URL      : {}", eval.candidate.source_url);
+                println!("  Match    : {:.1}% (✓ HighConfidence)", eval.similarity * 100.0);
+                println!("  Media    : {}\n", eval.candidate.media_url);
 
-                println!(" {:2}. [{}] {}", i + 1, platform, clean_title);
-                println!("     URL   : {}", eval.candidate.source_url);
-                println!("     Match : {:.1}% ({})\n", eval.similarity * 100.0, badge);
-            }
-        }
-
-        let best_evaluation = evaluations.first().cloned();
-
-        let match_eval = match best_evaluation {
-            Some(eval) if eval.match_confidence == MatchConfidence::HighConfidence => {
-                println!(
-                    "      ★ PRIMARY MATCH ANCHORED (similarity: {:.3} >= {:.2})\n      Source: {}\n      Media:  {}",
-                    eval.similarity, self.config.high_confidence_threshold, eval.candidate.source_url, eval.candidate.media_url
-                );
                 eval
             }
             Some(eval) => {
