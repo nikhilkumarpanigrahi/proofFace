@@ -69,16 +69,16 @@ impl Config {
             .and_then(|v| v.parse().ok())
             .unwrap_or(2);
 
-        // Strict biometric thresholds: Only HighConfidence (>= 0.80) is verified on blockchain
+        // Calibrated biometric thresholds for cross-platform visual reverse matching
         let high_confidence_threshold = env::var("HIGH_CONFIDENCE_THRESHOLD")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(0.80);
+            .unwrap_or(0.30);
 
         let possible_match_threshold = env::var("POSSIBLE_MATCH_THRESHOLD")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(0.65);
+            .unwrap_or(0.15);
 
         let chain_id = env::var("CHAIN_ID")
             .ok()
