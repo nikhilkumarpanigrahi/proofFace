@@ -196,10 +196,9 @@ fn evaluate_photographic_texture_naturalness(crop: &DynamicImage) -> bool {
         .sum::<f32>()
         / total_samples as f32;
 
-    // Real human photographic skin has soft continuous natural micro-gradients (typically 15 to 1200).
-    // Cartoons with heavy black ink outlines have extreme variance (> 1500),
-    // and flat artificial computer graphics have near-zero variance (< 10).
-    variance >= 15.0 && variance <= 1400.0
+    // Real human photographic skin has soft continuous natural micro-gradients (typically 12 to 5500).
+    // Flat artificial computer graphics and solid fills have near-zero variance (< 10).
+    variance >= 12.0 && variance <= 6500.0
 }
 
 
@@ -417,7 +416,10 @@ impl FaceDetector {
                     evaluate_photographic_texture_naturalness(&cropped);
 
                 let aspect_ratio = crop_h_dim as f32 / crop_w_dim.max(1) as f32;
-                let is_upright_face = aspect_ratio >= 0.60 && aspect_ratio <= 2.20;
+                let physical_aspect_ratio =
+                    (crop_h_dim as f32 / height as f32) / (crop_w_dim as f32 / width as f32).max(1e-6);
+                let is_upright_face = (physical_aspect_ratio >= 0.65 && physical_aspect_ratio <= 2.20)
+                    || (aspect_ratio >= 0.45 && aspect_ratio <= 3.20);
 
                 // E. Concrete Decision Logic:
                 // - If color photo: MUST have at least 32% skin coverage AND natural texture AND upright human face proportions.

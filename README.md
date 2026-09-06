@@ -57,7 +57,7 @@ Finding an image online does not prove authenticity, and downloading an image do
                                   │
                                   ▼
                ┌────────────────────────────────────┐
-               │ 4. Visual Search Orchestrator     │
+               │ 4. Visual Search Orchestrator      │
                │                                    │
                │  Google Lens AI Vision ┐           │
                │  (High-Res CDN Fetch)  ├→ Candidates
