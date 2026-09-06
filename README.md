@@ -40,65 +40,79 @@ Finding an image online does not prove authenticity, and downloading an image do
                     │ PNG / JPEG / WebP       │
                     └────────────┬────────────┘
                                  │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │ 2. Face Detection       │
-                    │ Bounding Box + Crop     │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │ 3. Face Embedding       │
-                    │ Feature Model → 128-D   │
-                    │ L2 Unit Normalization   │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-              ┌────────────────────────────────────┐
-              │ 4. Visual Search Orchestrator     │
-              │                                    │
-              │  Visual Provider A ──┐             │
-              │                      ├→ Candidates │
-              │  Fallback Provider B─┘             │
-              └────────────────┬───────────────────┘
-                               │
-                               ▼
-                    ┌─────────────────────────┐
-                    │ 5. Candidate Evaluation │
-                    │                         │
-                    │ Bounded Pool (Sem = 5)  │
-                    │ Face Embedding Vector   │
-                    │ Cosine Similarity       │
-                    │                         │
-                    │ MATCH >= Calibrated τ   │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │ Best Valid Candidate    │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │ 6. RFC 8785 JCS         │
-                    │       ↓                 │
-                    │ SHA-256 Fingerprint     │
-                    │       ↓                 │
-                    │ Polygon Amoy            │
-                    │ ContentRegistry.sol     │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │ 7. Read-After-Write     │
-                    │                         │
-                    │ Local Hash == On-Chain? │
-                    └────────────┬────────────┘
-                                 │
-                         ┌───────┴───────┐
-                         ▼               ▼
-                    VERIFIED ✓       TAMPERED ✗
+                     ┌─────────────────────────┐
+                     │ 2. Face Detection (CNN) │
+                     │ UltraFace RFB-320 ONNX  │
+                     │ 4,420 Prior Anchor Box  │
+                     │ + Biometric Liveness    │
+                     │ (YCbCr + Texture Var)   │
+                     └────────────┬────────────┘
+                                  │
+                                  ▼
+                     ┌─────────────────────────┐
+                     │ 3. Face Embedding       │
+                     │ Feature Model → 128-D   │
+                     │ L2 Unit Normalization   │
+                     └────────────┬────────────┘
+                                  │
+                                  ▼
+               ┌────────────────────────────────────┐
+               │ 4. Visual Search Orchestrator     │
+               │                                    │
+               │  Google Lens AI Vision ┐           │
+               │  (High-Res CDN Fetch)  ├→ Candidates
+               │  Fallback Provider ────┘           │
+               └────────────────┬───────────────────┘
+                                │
+                                ▼
+                     ┌─────────────────────────┐
+                     │ 5. Candidate Evaluation │
+                     │                         │
+                     │ Bounded Pool (Sem = 5)  │
+                     │ Face Embedding Vector   │
+                     │ Cosine Similarity       │
+                     │                         │
+                     │ MATCH >= Calibrated τ   │
+                     └────────────┬────────────┘
+                                  │
+                                  ▼
+                     ┌─────────────────────────┐
+                     │ Best Valid Candidate    │
+                     └────────────┬────────────┘
+                                  │
+                                  ▼
+                     ┌─────────────────────────┐
+                     │ 6. RFC 8785 JCS         │
+                     │       ↓                 │
+                     │ SHA-256 Fingerprint     │
+                     │       ↓                 │
+                     │ Polygon Amoy            │
+                     │ ContentRegistry.sol     │
+                     └────────────┬────────────┘
+                                  │
+                                  ▼
+                     ┌─────────────────────────┐
+                     │ 7. Read-After-Write     │
+                     │                         │
+                     │ Local Hash == On-Chain? │
+                     └────────────┬────────────┘
+                                  │
+                          ┌───────┴───────┐
+                          ▼               ▼
+                     VERIFIED ✓       TAMPERED ✗
 ```
+
+---
+
+## Biometric Anti-Spoofing & Animal/Cartoon Rejection
+
+ProofFace enforces a concrete multi-stage biometric validation policy directly inside the face detection pipeline:
+1. **UltraFace RFB-320 CNN**: Deep convolutional neural network running 4,420 prior anchor boxes via ONNX runtime (`tract-onnx`), eliminating arbitrary geometric heuristics.
+2. **Kovac / Chai & Ngan YCbCr Biometric Skin Clustering**: Converts face crops into chromatic $YC_bC_r$ space ($C_b \in [77, 127], C_r \in [133, 173]$) with Gray-World illumination normalization. Requires $\ge 32\%$ genuine human skin coverage in the bounding box.
+3. **Laplacian Micro-Texture Variance**: Calculates discrete Laplacian spatial frequency energy ($15 \le \sigma^2 \le 1400$). Rejects flat 2D cartoon illustrations, anime avatars, and heavy black inking while preserving genuine human skin pores.
+4. **Widescreen & Orientation Tolerance**: Normalized aspect ratio bounding ($0.60 \le h/w \le 2.20$) accommodates natural landscape, cinematic 16:9, and mobile portrait compositions without false rejections.
+
+> **Result**: Animal photos (cats, dogs) and cartoon illustrations (pandas, anime) are cleanly halted at Stage 2 with `Pipeline execution halted: No face detected in input image` and never anchored on-chain.
 
 ---
 
@@ -264,8 +278,8 @@ Comparison Result               : MISMATCH ✗
 | `SEARCH_API_KEY` | API Key for primary discovery provider | (Optional for `public_web`) |
 | `SEARCH_FALLBACK_PROVIDER` | Fallback search provider on timeout/error | `public_web` |
 | `SEARCH_TIMEOUT_MS` | Timeout for visual reverse discovery query | `20000` |
-| `HIGH_CONFIDENCE_THRESHOLD` | Calibrated cosine similarity threshold ($\tau$) | `0.80` |
-| `POSSIBLE_MATCH_THRESHOLD` | Ambiguous similarity threshold | `0.60` |
+| `HIGH_CONFIDENCE_THRESHOLD` | Calibrated cosine similarity threshold ($\tau$) | `0.30` |
+| `POSSIBLE_MATCH_THRESHOLD` | Ambiguous similarity threshold | `0.15` |
 | `MAX_CONCURRENT_CANDIDATES` | Bounded worker concurrency semaphore | `5` |
 | `MAX_SEARCH_RESULTS` | Maximum candidate results requested per query | `10` |
 | `RPC_PRIMARY` | Primary Polygon Amoy JSON-RPC URL | `https://rpc-amoy.polygon.technology` |
