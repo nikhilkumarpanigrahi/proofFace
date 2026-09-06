@@ -159,11 +159,17 @@ pub struct BiometricSecurityConfig {
     /// Discards harsh synthetic ink outlines while permitting 4K HDR smartphone cameras.
     pub max_texture_variance: f32,
 
-    /// Minimum physical upright face aspect ratio (height / width in normalized face space).
+    /// Minimum physical upright face aspect ratio (height / width in pixels).
+    /// Human cranial anthropometry (ISO/IEC 19794-5) dictates a face ratio between 0.70 and 1.80.
     pub min_physical_aspect_ratio: f32,
 
-    /// Maximum physical upright face aspect ratio in normalized face space.
+    /// Maximum physical upright face aspect ratio in pixels.
     pub max_physical_aspect_ratio: f32,
+
+    /// Maximum allowed ratio of hyper-saturated pixels (saturation > 0.50).
+    /// Real photographic human skin exhibits low-to-moderate saturation (< 45% of pixels).
+    /// Anime, cartoons, and digital CGI illustrations exhibit extreme hyper-saturation (> 50-70%).
+    pub max_high_saturation_ratio: f32,
 
     /// Minimum CNN confidence score from UltraFace 4,420 anchor priors.
     pub min_cnn_confidence: f32,
@@ -179,8 +185,9 @@ impl Default for BiometricSecurityConfig {
             max_flat_pixel_ratio: 0.65,
             min_texture_variance: 12.0,
             max_texture_variance: 6500.0,
-            min_physical_aspect_ratio: 0.65,
-            max_physical_aspect_ratio: 2.20,
+            min_physical_aspect_ratio: 0.70,
+            max_physical_aspect_ratio: 1.80,
+            max_high_saturation_ratio: 0.45,
             min_cnn_confidence: 0.70,
             nms_iou_threshold: 0.30,
         }
@@ -479,23 +486,42 @@ impl FaceDetector {
                 }
                 let skin_coverage = skin_pixels as f32 / total_crop_pixels;
 
+                let mut high_sat_count = 0u32;
+                for cy in 0..crop_h_dim {
+                    for cx in 0..crop_w_dim {
+                        let p = rgb_cropped.get_pixel(cx, cy);
+                        let r = p[0] as f32;
+                        let g = p[1] as f32;
+                        let b = p[2] as f32;
+                        let max_c = r.max(g).max(b);
+                        let min_c = r.min(g).min(b);
+                        let sat = if max_c > 0.0 { (max_c - min_c) / max_c } else { 0.0 };
+                        if sat > 0.50 {
+                            high_sat_count += 1;
+                        }
+                    }
+                }
+                let high_sat_ratio = high_sat_count as f32 / total_crop_pixels;
+                let has_natural_saturation =
+                    is_monochrome || high_sat_ratio <= self.config.max_high_saturation_ratio;
+
                 let has_natural_photographic_texture =
                     evaluate_photographic_texture_naturalness(&cropped, &self.config);
 
                 let aspect_ratio = crop_h_dim as f32 / crop_w_dim.max(1) as f32;
-                let physical_aspect_ratio =
-                    (crop_h_dim as f32 / height as f32) / (crop_w_dim as f32 / width as f32).max(1e-6);
-                let is_upright_face = (physical_aspect_ratio >= self.config.min_physical_aspect_ratio
-                    && physical_aspect_ratio <= self.config.max_physical_aspect_ratio)
-                    || (aspect_ratio >= 0.45 && aspect_ratio <= 3.20);
+                let is_upright_face = aspect_ratio >= self.config.min_physical_aspect_ratio
+                    && aspect_ratio <= self.config.max_physical_aspect_ratio;
 
-                // E. Presentation Attack Detection (PAD) Decision Logic:
-                // - Color photo: MUST satisfy minimum human skin chromatic coverage AND photographic micro-texture.
-                // - Vintage B&W photo: Bypasses chrominance check, but strictly requires natural pore micro-texture and high CNN confidence (>= 0.85).
+                // E. Presentation Attack Detection (PAD) Decision Logic (ISO/IEC 30107-3):
+                // - Color photo: MUST satisfy minimum human skin chromatic coverage, natural non-synthetic saturation,
+                //   photographic micro-texture, and anthropometric upright face aspect ratio.
+                // - Vintage B&W photo: Bypasses chrominance/saturation check, but strictly requires natural pore micro-texture,
+                //   upright face aspect ratio, and high CNN confidence (>= 0.85).
                 let passes_human_biometrics = if is_monochrome {
                     has_natural_photographic_texture && cand.score >= 0.85 && is_upright_face
                 } else {
                     skin_coverage >= self.config.min_skin_coverage_ratio
+                        && has_natural_saturation
                         && has_natural_photographic_texture
                         && is_upright_face
                 };
