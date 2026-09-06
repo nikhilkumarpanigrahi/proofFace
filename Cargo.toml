@@ -25,6 +25,7 @@ url = "2.5"
 urlencoding = "2.1"
 async-trait = "0.1"
 k256 = { version = "0.13", features = ["ecdsa"] }
+tract-onnx = "0.23.6"
 
 [dev-dependencies]
 tempfile = "3.12"
