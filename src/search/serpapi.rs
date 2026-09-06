@@ -123,8 +123,8 @@ impl SearchProvider for SerpApiProvider {
                                         .and_then(|v| v.as_str());
 
                                     let media_url = item
-                                        .get("image")
-                                        .or_else(|| item.get("thumbnail"))
+                                        .get("thumbnail")
+                                        .or_else(|| item.get("image"))
                                         .and_then(|v| v.as_str());
 
                                     if let (Some(l), Some(m)) = (link, media_url) {
@@ -183,8 +183,8 @@ impl SearchProvider for SerpApiProvider {
                                     .and_then(|v| v.as_str());
 
                                 let media_url = item
-                                    .get("original")
-                                    .or_else(|| item.get("thumbnail"))
+                                    .get("thumbnail")
+                                    .or_else(|| item.get("original"))
                                     .and_then(|v| v.as_str());
 
                                 if let (Some(l), Some(m)) = (link, media_url) {
