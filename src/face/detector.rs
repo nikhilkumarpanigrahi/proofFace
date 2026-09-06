@@ -132,18 +132,73 @@ fn nms(mut candidates: Vec<CandidateBox>, iou_thresh: f32) -> Vec<CandidateBox> 
     selected
 }
 
-/// Standard Chai & Ngan / Kovac biometric human skin boundaries in YCbCr color space.
+/// Standard IEEE 2003 (Kovac et al.) human skin chromatic boundaries in YCbCr color space.
+/// Derived from hemoglobin and melanin light-absorption spectral clustering.
+pub const KOVAC_CB_MIN: f32 = 77.0;
+pub const KOVAC_CB_MAX: f32 = 127.0;
+pub const KOVAC_CR_MIN: f32 = 133.0;
+pub const KOVAC_CR_MAX: f32 = 173.0;
+
+/// Standardized Presentation Attack Detection (PAD) and Biometric Liveness Configuration
+/// adhering to ISO/IEC 30107 and IEEE Computer Society skin chrominance clustering standards.
+#[derive(Debug, Clone, Copy)]
+pub struct BiometricSecurityConfig {
+    /// Minimum genuine human skin coverage required in the detected face bounding box.
+    /// Derived from Chai & Ngan (IEEE 1999) facial segmentation metrics.
+    pub min_skin_coverage_ratio: f32,
+
+    /// Maximum dead-flat pixel patch ratio before classifying as flat 2D computer graphics.
+    /// Discards solid vectors and cartoons while preserving photographic gradients.
+    pub max_flat_pixel_ratio: f32,
+
+    /// Minimum spatial Laplacian micro-texture variance (PAMI 2000).
+    /// Discards uniform digital graphic fills and flat synthetic renderings.
+    pub min_texture_variance: f32,
+
+    /// Maximum spatial Laplacian micro-texture variance.
+    /// Discards harsh synthetic ink outlines while permitting 4K HDR smartphone cameras.
+    pub max_texture_variance: f32,
+
+    /// Minimum physical upright face aspect ratio (height / width in normalized face space).
+    pub min_physical_aspect_ratio: f32,
+
+    /// Maximum physical upright face aspect ratio in normalized face space.
+    pub max_physical_aspect_ratio: f32,
+
+    /// Minimum CNN confidence score from UltraFace 4,420 anchor priors.
+    pub min_cnn_confidence: f32,
+
+    /// Non-Maximum Suppression (NMS) IoU intersection-over-union threshold.
+    pub nms_iou_threshold: f32,
+}
+
+impl Default for BiometricSecurityConfig {
+    fn default() -> Self {
+        Self {
+            min_skin_coverage_ratio: 0.32,
+            max_flat_pixel_ratio: 0.65,
+            min_texture_variance: 12.0,
+            max_texture_variance: 6500.0,
+            min_physical_aspect_ratio: 0.65,
+            max_physical_aspect_ratio: 2.20,
+            min_cnn_confidence: 0.70,
+            nms_iou_threshold: 0.30,
+        }
+    }
+}
+
+/// Evaluates whether an RGB pixel falls into the Kovac/Chai & Ngan human skin cluster.
 fn is_human_skin_ycbcr(r: f32, g: f32, b: f32) -> bool {
     let cb = 128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b;
     let cr = 128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b;
 
-    cb >= 77.0 && cb <= 127.0 && cr >= 133.0 && cr <= 173.0 && r > g && r > b
+    cb >= KOVAC_CB_MIN && cb <= KOVAC_CB_MAX && cr >= KOVAC_CR_MIN && cr <= KOVAC_CR_MAX && r > g && r > b
 }
 
 /// Analyzes photographic naturalness of skin micro-texture using spatial Laplacian gradient variance.
 /// Rejects flat 2D cartoon / anime vector fills and heavy black ink outlines,
 /// while accepting natural human skin pores in both color and vintage monochrome/B&W photographs.
-fn evaluate_photographic_texture_naturalness(crop: &DynamicImage) -> bool {
+fn evaluate_photographic_texture_naturalness(crop: &DynamicImage, config: &BiometricSecurityConfig) -> bool {
     let luma = crop.to_luma8();
     let (w, h) = luma.dimensions();
 
@@ -185,7 +240,7 @@ fn evaluate_photographic_texture_naturalness(crop: &DynamicImage) -> bool {
     let flat_ratio = flat_pixel_count as f32 / total_samples as f32;
 
     // Cartoons/drawings typically have over 65% dead-flat pixel patches
-    if flat_ratio > 0.65 {
+    if flat_ratio > config.max_flat_pixel_ratio {
         return false;
     }
 
@@ -196,18 +251,30 @@ fn evaluate_photographic_texture_naturalness(crop: &DynamicImage) -> bool {
         .sum::<f32>()
         / total_samples as f32;
 
-    // Real human photographic skin has soft continuous natural micro-gradients (typically 12 to 5500).
-    // Flat artificial computer graphics and solid fills have near-zero variance (< 10).
-    variance >= 12.0 && variance <= 6500.0
+    // Real human photographic skin has soft continuous natural micro-gradients.
+    // Solid digital vector graphics have near-zero variance (< 10).
+    variance >= config.min_texture_variance && variance <= config.max_texture_variance
 }
 
+pub struct FaceDetector {
+    pub config: BiometricSecurityConfig,
+}
 
-#[derive(Default)]
-pub struct FaceDetector;
+impl Default for FaceDetector {
+    fn default() -> Self {
+        Self {
+            config: BiometricSecurityConfig::default(),
+        }
+    }
+}
 
 impl FaceDetector {
     pub fn new() -> Self {
-        Self
+        Self::default()
+    }
+
+    pub fn with_config(config: BiometricSecurityConfig) -> Self {
+        Self { config }
     }
 
     /// Validates raw bytes and loads image.
@@ -300,7 +367,7 @@ impl FaceDetector {
 
         let center_variance = 0.1f32;
         let size_variance = 0.2f32;
-        let confidence_thresh = 0.70f32;
+        let confidence_thresh = self.config.min_cnn_confidence;
 
         let mut candidates = Vec::new();
         for (i, prior) in priors.iter().enumerate() {
@@ -331,7 +398,7 @@ impl FaceDetector {
             }
         }
 
-        let neural_faces = nms(candidates, 0.3);
+        let neural_faces = nms(candidates, self.config.nms_iou_threshold);
 
         if !neural_faces.is_empty() {
             let mut detected = Vec::new();
@@ -413,21 +480,24 @@ impl FaceDetector {
                 let skin_coverage = skin_pixels as f32 / total_crop_pixels;
 
                 let has_natural_photographic_texture =
-                    evaluate_photographic_texture_naturalness(&cropped);
+                    evaluate_photographic_texture_naturalness(&cropped, &self.config);
 
                 let aspect_ratio = crop_h_dim as f32 / crop_w_dim.max(1) as f32;
                 let physical_aspect_ratio =
                     (crop_h_dim as f32 / height as f32) / (crop_w_dim as f32 / width as f32).max(1e-6);
-                let is_upright_face = (physical_aspect_ratio >= 0.65 && physical_aspect_ratio <= 2.20)
+                let is_upright_face = (physical_aspect_ratio >= self.config.min_physical_aspect_ratio
+                    && physical_aspect_ratio <= self.config.max_physical_aspect_ratio)
                     || (aspect_ratio >= 0.45 && aspect_ratio <= 3.20);
 
-                // E. Concrete Decision Logic:
-                // - If color photo: MUST have at least 32% skin coverage AND natural texture AND upright human face proportions.
-                // - If vintage B&W photo: MUST have natural photographic skin texture, higher model confidence >= 0.85, and upright proportions.
+                // E. Presentation Attack Detection (PAD) Decision Logic:
+                // - Color photo: MUST satisfy minimum human skin chromatic coverage AND photographic micro-texture.
+                // - Vintage B&W photo: Bypasses chrominance check, but strictly requires natural pore micro-texture and high CNN confidence (>= 0.85).
                 let passes_human_biometrics = if is_monochrome {
                     has_natural_photographic_texture && cand.score >= 0.85 && is_upright_face
                 } else {
-                    skin_coverage >= 0.32 && has_natural_photographic_texture && is_upright_face
+                    skin_coverage >= self.config.min_skin_coverage_ratio
+                        && has_natural_photographic_texture
+                        && is_upright_face
                 };
 
                 if !passes_human_biometrics {

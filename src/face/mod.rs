@@ -5,8 +5,8 @@ pub mod similarity;
 use crate::error::{PipelineError, Result};
 use crate::models::{DetectedFace, FaceEmbedding};
 use async_trait::async_trait;
-use detector::FaceDetector;
-use embedder::FaceEmbedder;
+pub use detector::{BiometricSecurityConfig, FaceDetector};
+pub use embedder::FaceEmbedder;
 
 #[async_trait]
 pub trait FaceEngine: Send + Sync {
