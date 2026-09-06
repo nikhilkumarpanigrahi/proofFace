@@ -83,6 +83,7 @@ impl SearchProvider for TavilySearchProvider {
                         title,
                         snippet,
                         media_url,
+                        fallback_media_url: None,
                         provider: self.name().into(),
                     });
                 }

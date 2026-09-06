@@ -122,12 +122,25 @@ impl SearchProvider for SerpApiProvider {
                                         .or_else(|| item.get("source"))
                                         .and_then(|v| v.as_str());
 
-                                    let media_url = item
-                                        .get("thumbnail")
-                                        .or_else(|| item.get("image"))
-                                        .and_then(|v| v.as_str());
+                                    let raw_image = item.get("image").and_then(|v| v.as_str());
+                                    let thumbnail = item.get("thumbnail").and_then(|v| v.as_str());
 
-                                    if let (Some(l), Some(m)) = (link, media_url) {
+                                    // Meta lookaside URLs return HTML for scrapers; use Google CDN thumbnail primarily for Meta.
+                                    // For all other platforms (Pinterest, news, blogs), use full-res raw_image primarily, thumbnail as fallback.
+                                    let is_meta = raw_image
+                                        .map(|u| {
+                                            u.contains("lookaside.instagram.com")
+                                                || u.contains("lookaside.fbsbx.com")
+                                        })
+                                        .unwrap_or(false);
+
+                                    let (primary_media, fallback_media) = if is_meta {
+                                        (thumbnail.or(raw_image), raw_image)
+                                    } else {
+                                        (raw_image.or(thumbnail), thumbnail)
+                                    };
+
+                                    if let (Some(l), Some(m)) = (link, primary_media) {
                                         let title = item
                                             .get("title")
                                             .and_then(|v| v.as_str())
@@ -142,6 +155,7 @@ impl SearchProvider for SerpApiProvider {
                                             title,
                                             snippet,
                                             media_url: Some(m.to_string()),
+                                            fallback_media_url: fallback_media.map(String::from),
                                             provider: "serpapi_google_lens".into(),
                                         });
                                     }
@@ -182,12 +196,10 @@ impl SearchProvider for SerpApiProvider {
                                     .or_else(|| item.get("source"))
                                     .and_then(|v| v.as_str());
 
-                                let media_url = item
-                                    .get("thumbnail")
-                                    .or_else(|| item.get("original"))
-                                    .and_then(|v| v.as_str());
+                                let raw_image = item.get("original").and_then(|v| v.as_str());
+                                let thumbnail = item.get("thumbnail").and_then(|v| v.as_str());
 
-                                if let (Some(l), Some(m)) = (link, media_url) {
+                                if let (Some(l), Some(m)) = (link, raw_image.or(thumbnail)) {
                                     let title = item
                                         .get("title")
                                         .and_then(|v| v.as_str())
@@ -202,6 +214,7 @@ impl SearchProvider for SerpApiProvider {
                                         title,
                                         snippet,
                                         media_url: Some(m.to_string()),
+                                        fallback_media_url: thumbnail.map(String::from),
                                         provider: self.name().into(),
                                     });
                                 }

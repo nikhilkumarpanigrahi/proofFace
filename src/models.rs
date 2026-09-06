@@ -56,6 +56,7 @@ pub struct SearchResult {
     pub title: Option<String>,
     pub snippet: Option<String>,
     pub media_url: Option<String>,
+    pub fallback_media_url: Option<String>,
     pub provider: String,
 }
 

@@ -88,6 +88,7 @@ impl SearchProvider for PublicWebSearchProvider {
                                     title: Some(title.to_string()),
                                     snippet,
                                     media_url,
+                                    fallback_media_url: None,
                                     provider: self.name().into(),
                                 });
                             }
@@ -132,6 +133,7 @@ impl SearchProvider for PublicWebSearchProvider {
                                     format!("https://duckduckgo.com{s}")
                                 }
                             }),
+                            fallback_media_url: None,
                             provider: self.name().into(),
                         });
                     }
@@ -161,6 +163,7 @@ impl SearchProvider for PublicWebSearchProvider {
                                     title: text.clone(),
                                     snippet: text,
                                     media_url: icon_url,
+                                    fallback_media_url: None,
                                     provider: self.name().into(),
                                 });
                             }

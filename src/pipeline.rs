@@ -263,10 +263,21 @@ impl Pipeline {
         let mut tasks = Vec::new();
 
         for (idx, result) in search_results.iter().enumerate() {
-            let media_url = match &result.media_url {
-                Some(url) if !url.trim().is_empty() => url.clone(),
-                _ => continue, // Skip text-only search results without media
-            };
+            let mut candidate_media_urls = Vec::new();
+            if let Some(url) = &result.media_url {
+                if !url.trim().is_empty() {
+                    candidate_media_urls.push(url.clone());
+                }
+            }
+            if let Some(fb) = &result.fallback_media_url {
+                if !fb.trim().is_empty() && !candidate_media_urls.contains(fb) {
+                    candidate_media_urls.push(fb.clone());
+                }
+            }
+
+            if candidate_media_urls.is_empty() {
+                continue; // Skip text-only search results without media
+            }
 
             let sem = Arc::clone(&semaphore);
             let fetcher = ContentFetcher::new(self.config.candidate_timeout_ms);
@@ -284,34 +295,38 @@ impl Pipeline {
                     Err(_) => return,
                 };
 
-                if let Ok(bytes) = fetcher.fetch_bytes(&media_url).await {
-                    if let Ok(img) = detector.validate_and_load(&bytes) {
-                        if let Ok(faces) = detector.detect_faces(&img) {
-                            if let Some(candidate_face) = faces.first() {
-                                if let Ok(cand_emb) = embedder.generate_embedding(candidate_face) {
-                                    if let Ok(sim) = cosine_similarity(&target_emb, &cand_emb) {
-                                        let conf =
-                                            evaluate_similarity(sim, high_thresh, poss_thresh);
+                // Try each media URL in order (e.g. high-res original first, CDN thumbnail as fallback)
+                for media_url in candidate_media_urls {
+                    if let Ok(bytes) = fetcher.fetch_bytes(&media_url).await {
+                        if let Ok(img) = detector.validate_and_load(&bytes) {
+                            if let Ok(faces) = detector.detect_faces(&img) {
+                                if let Some(candidate_face) = faces.first() {
+                                    if let Ok(cand_emb) = embedder.generate_embedding(candidate_face) {
+                                        if let Ok(sim) = cosine_similarity(&target_emb, &cand_emb) {
+                                            let conf =
+                                                evaluate_similarity(sim, high_thresh, poss_thresh);
 
-                                        println!(
-                                            "      #Candidate {:02} ........ similarity: {:.3} ({:?})",
-                                            idx + 1,
-                                            sim,
-                                            conf
-                                        );
+                                            println!(
+                                                "      #Candidate {:02} ........ similarity: {:.3} ({:?})",
+                                                idx + 1,
+                                                sim,
+                                                conf
+                                            );
 
-                                        let mut lock = all_matches_clone.lock().await;
-                                        lock.push(CandidateEvaluation {
-                                            candidate: Candidate {
-                                                source_url: res_clone.url,
-                                                media_url,
-                                                title: res_clone.title,
-                                                snippet: res_clone.snippet,
-                                                raw_image_bytes: bytes,
-                                            },
-                                            similarity: sim,
-                                            match_confidence: conf,
-                                        });
+                                            let mut lock = all_matches_clone.lock().await;
+                                            lock.push(CandidateEvaluation {
+                                                candidate: Candidate {
+                                                    source_url: res_clone.url,
+                                                    media_url,
+                                                    title: res_clone.title,
+                                                    snippet: res_clone.snippet,
+                                                    raw_image_bytes: bytes,
+                                                },
+                                                similarity: sim,
+                                                match_confidence: conf,
+                                            });
+                                            break; // Successfully evaluated this candidate
+                                        }
                                     }
                                 }
                             }
