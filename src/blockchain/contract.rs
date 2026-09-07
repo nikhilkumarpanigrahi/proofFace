@@ -13,6 +13,16 @@ impl ContractEncoder {
         sel
     }
 
+    /// Computes 32-byte Ethereum event topic for ProofRegistered(bytes32,string,uint256,address)
+    pub fn proof_registered_event_topic() -> [u8; 32] {
+        let mut hasher = Keccak256::new();
+        hasher.update(b"ProofRegistered(bytes32,string,uint256,address)");
+        let hash = hasher.finalize();
+        let mut topic = [0u8; 32];
+        topic.copy_from_slice(&hash);
+        topic
+    }
+
     /// Encodes call to `getProof(bytes32)`
     pub fn encode_get_proof(fingerprint: &[u8; 32]) -> Vec<u8> {
         let mut data = Vec::with_capacity(36);

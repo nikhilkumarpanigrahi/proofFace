@@ -112,6 +112,7 @@ async fn main() -> Result<()> {
                 config.rpc_secondary.clone(),
                 config.contract_address.clone(),
                 config.wallet_private_key.clone(),
+                config.chain_id,
             );
 
             let clean_hex = fingerprint.trim_start_matches("0x");
@@ -138,6 +139,74 @@ async fn main() -> Result<()> {
                 }
             } else {
                 eprintln!("Error: Invalid hexadecimal string.");
+            }
+        }
+        Commands::DeployContract { private_key } => {
+            println!("╔══════════════════════════════════════════════════════════╗");
+            println!("║      PROOFFACE 🦀 CONTENTREGISTRY CONTRACT DEPLOYER      ║");
+            println!("║         Target Network: Polygon Amoy (Chain ID 80002)    ║");
+            println!("╚══════════════════════════════════════════════════════════╝\n");
+
+            let pk = private_key
+                .or_else(|| config.wallet_private_key.clone())
+                .filter(|s| !s.trim().is_empty());
+
+            let pk_str = match pk {
+                Some(k) => k,
+                None => {
+                    eprintln!("Error: No wallet private key provided!");
+                    eprintln!("Please either:");
+                    eprintln!("  1. Pass key via flag: cargo run -- deploy-contract --private-key 0x...");
+                    eprintln!("  2. Or add WALLET_PRIVATE_KEY=0x... in your .env file.");
+                    eprintln!("\nFree Polygon Amoy testnet POL faucet: https://faucet.polygon.technology/");
+                    std::process::exit(1);
+                }
+            };
+
+            let registry = PolygonRegistry::new(
+                config.rpc_primary.clone(),
+                config.rpc_secondary.clone(),
+                None,
+                Some(pk_str.clone()),
+                config.chain_id,
+            );
+
+            let deployer = proofface::blockchain::deployer::ContractDeployer::new(&registry);
+            match deployer.deploy(&pk_str).await {
+                Ok(contract_address) => {
+                    println!("\n╔══════════════════════════════════════════════════════════╗");
+                    println!("║             DEPLOYMENT SUCCESSFUL! ✓                     ║");
+                    println!("╚══════════════════════════════════════════════════════════╝");
+                    println!("Contract Address: {}", contract_address);
+                    println!("Polygonscan Link: https://amoy.polygonscan.com/address/{}", contract_address);
+                    println!("\nℹ Action Required:");
+                    println!("Add this to your .env file:");
+                    println!("CONTRACT_ADDRESS={}", contract_address);
+
+                    if let Ok(env_content) = std::fs::read_to_string(".env") {
+                        let updated = if env_content.contains("CONTRACT_ADDRESS=") {
+                            let lines: Vec<String> = env_content
+                                .lines()
+                                .map(|l| {
+                                    if l.starts_with("CONTRACT_ADDRESS=") {
+                                        format!("CONTRACT_ADDRESS={}", contract_address)
+                                    } else {
+                                        l.to_string()
+                                    }
+                                })
+                                .collect();
+                            lines.join("\n")
+                        } else {
+                            format!("{}\nCONTRACT_ADDRESS={}\n", env_content.trim(), contract_address)
+                        };
+                        let _ = std::fs::write(".env", updated);
+                        println!("✓ Automatically updated .env with CONTRACT_ADDRESS");
+                    }
+                }
+                Err(e) => {
+                    eprintln!("\nContract deployment failed: {e}");
+                    std::process::exit(1);
+                }
             }
         }
         Commands::Health => {

@@ -63,6 +63,13 @@ pub enum Commands {
         fingerprint: String,
     },
 
+    /// Deploy the ContentRegistry smart contract to Polygon Amoy testnet
+    DeployContract {
+        /// Optional private key (overrides WALLET_PRIVATE_KEY in .env)
+        #[arg(short, long, value_name = "PRIVATE_KEY")]
+        private_key: Option<String>,
+    },
+
     /// Health check for configured search providers and Polygon RPC endpoints
     Health,
 }

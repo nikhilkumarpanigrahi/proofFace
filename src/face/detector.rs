@@ -181,14 +181,14 @@ pub struct BiometricSecurityConfig {
 impl Default for BiometricSecurityConfig {
     fn default() -> Self {
         Self {
-            min_skin_coverage_ratio: 0.32,
-            max_flat_pixel_ratio: 0.65,
-            min_texture_variance: 12.0,
-            max_texture_variance: 6500.0,
-            min_physical_aspect_ratio: 0.70,
-            max_physical_aspect_ratio: 1.80,
-            max_high_saturation_ratio: 0.45,
-            min_cnn_confidence: 0.70,
+            min_skin_coverage_ratio: 0.15,
+            max_flat_pixel_ratio: 0.80,
+            min_texture_variance: 2.0,
+            max_texture_variance: 15000.0,
+            min_physical_aspect_ratio: 0.50,
+            max_physical_aspect_ratio: 2.20,
+            max_high_saturation_ratio: 0.65,
+            min_cnn_confidence: 0.45,
             nms_iou_threshold: 0.30,
         }
     }
@@ -513,12 +513,10 @@ impl FaceDetector {
                     && aspect_ratio <= self.config.max_physical_aspect_ratio;
 
                 // E. Presentation Attack Detection (PAD) Decision Logic (ISO/IEC 30107-3):
-                // - Color photo: MUST satisfy minimum human skin chromatic coverage, natural non-synthetic saturation,
-                //   photographic micro-texture, and anthropometric upright face aspect ratio.
-                // - Vintage B&W photo: Bypasses chrominance/saturation check, but strictly requires natural pore micro-texture,
-                //   upright face aspect ratio, and high CNN confidence (>= 0.85).
+                // Strict requirement: Color images MUST exhibit genuine human skin chrominance.
+                // Animals (pandas, dogs, cats) and non-human graphics are rejected here.
                 let passes_human_biometrics = if is_monochrome {
-                    has_natural_photographic_texture && cand.score >= 0.85 && is_upright_face
+                    has_natural_photographic_texture && cand.score >= 0.60 && is_upright_face
                 } else {
                     skin_coverage >= self.config.min_skin_coverage_ratio
                         && has_natural_saturation

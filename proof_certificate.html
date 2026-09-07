@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProofFace • Cryptographic Proof Certificate</title>
+    <style>
+        :root {
+            --bg: #090a0f;
+            --card-bg: rgba(20, 24, 38, 0.75);
+            --border: rgba(99, 102, 241, 0.25);
+            --accent: #8b5cf6;
+            --accent-glow: #a855f7;
+            --success: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body {
+            background: var(--bg);
+            background-image: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15), transparent 70%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .cert-card {
+            width: 100%;
+            max-width: 680px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 40px rgba(139, 92, 246, 0.15);
+            overflow: hidden;
+            position: relative;
+        }
+        .header {
+            padding: 32px 32px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .logo { font-size: 28px; }
+        .brand-text h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #fff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .brand-text p { font-size: 12px; color: var(--text-muted); }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .content { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; }
+        .data-box {
+            background: rgba(10, 12, 20, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .data-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; }
+        .data-label { color: var(--text-muted); }
+        .data-val { font-weight: 600; text-align: right; }
+        .hash-code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            color: #c084fc;
+            word-break: break-all;
+            background: rgba(139, 92, 246, 0.08);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            margin-top: 6px;
+        }
+        .footer {
+            padding: 24px 32px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #7c3aed, #9333ea);
+            color: #fff;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.6); }
+        .meta { font-size: 12px; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="cert-card">
+        <div class="header">
+            <div class="brand">
+                <span class="logo">🦀</span>
+                <div class="brand-text">
+                    <h1>ProofFace Certificate</h1>
+                    <p>Cryptographic Provenance Invariant</p>
+                </div>
+            </div>
+            <div class="badge">
+                <span>●</span> VERIFIED ON-CHAIN
+            </div>
+        </div>
+
+        <div class="content">
+            <div>
+                <div class="section-title">Public Source Discovery</div>
+                <div class="data-box">
+                    <div class="data-row">
+                        <span class="data-label">Matched Title</span>
+                        <span class="data-val">Sundar Pichai Hits Back at Criticism of Google's A.I. ...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Biometric Match Similarity</span>
+                        <span class="data-val" style="color: #10b981;">99.8% (High Confidence)</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Source URL</span>
+                        <span class="data-val"><a href="https://www.nytimes.com/2024/12/04/business/dealbook/google-ai-sundar-pichai.html" target="_blank" style="color: #818cf8; text-decoration: none;">View Original Post ↗</a></span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Cryptographic Canonical Fingerprint (SHA-256)</div>
+                <div class="hash-code">0x77556d8cd78c1f6a24ac36e4a28d7b9641deee9fcb5769f6a50ff5973cb41e83</div>
+            </div>
+
+            <div>
+                <div class="section-title">Polygon Amoy Blockchain Anchor</div>
+                <div class="data-box">
+                    <div class="data-row">
+                        <span class="data-label">Network</span>
+                        <span class="data-val">Polygon Amoy (Chain ID 80002)</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Block Number</span>
+                        <span class="data-val">#47023447</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Timestamp</span>
+                        <span class="data-val">2026-09-07T11:05:46.327686+00:00</span>
+                    </div>
+                    <div class="data-row" style="flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 6px;">
+                        <span class="data-label">Transaction Hash</span>
+                        <div class="hash-code" style="width: 100%;">0x2461a6df755c216a8d1af77385d80158ec996b63473abcbb1d4306d2095b0145</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="meta">Anchored via ProofFace Protocol</div>
+            <a href="https://amoy.polygonscan.com/tx/0x2461a6df755c216a8d1af77385d80158ec996b63473abcbb1d4306d2095b0145" target="_blank" class="btn">
+                View Transaction on Polygonscan ↗
+            </a>
+        </div>
+    </div>
+</body>
+</html>
